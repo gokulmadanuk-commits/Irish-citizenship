@@ -48,7 +48,7 @@ export const DOCUMENT_TYPES: DocumentType[] = [
     isResidenceProof: true,
     points: 100,
     originalOrCopy: 'Certified copy. Must show at least three monthly transactions in a row.',
-    niNote: 'Warning: the published rule says the bank must be regulated by the Central Bank of Ireland or the European Central Bank. A Northern Ireland bank is regulated in the UK. Ask the Citizenship Division before you rely on this alone.',
+    niNote: 'Unclear for Northern Ireland. One line on the proofs page expects card payments made on the island of Ireland, which fits. The next line requires a bank regulated in Ireland or the EU, which a Northern Ireland bank is not. Ask the Citizenship Division before you rely on this alone.',
     acceptanceCriteria: [
       NAME, ADDRESS, DATED_IN_PERIOD,
       kw('transactions', 'It shows real transactions', ['balance', 'payment', 'debit', 'credit', 'transaction', 'statement'],
@@ -63,7 +63,7 @@ export const DOCUMENT_TYPES: DocumentType[] = [
     isResidenceProof: true,
     points: 100,
     originalOrCopy: 'Certified copy.',
-    niNote: 'In Northern Ireland this is your HMRC P60. The Irish version is the Revenue Employment Detail Summary.',
+    niNote: 'In Northern Ireland this is your HMRC P60. Take care: the Department mentions P60s inside a section written for citizens of the EEA, Switzerland and the UK, so it may not accept one from you. Ask first.',
     acceptanceCriteria: [
       NAME, ADDRESS, DATED_IN_PERIOD,
       kw('tax', 'It is a tax or pay record', ['p60', 'hmrc', 'revenue', 'paye', 'employment detail summary', 'national insurance', 'tax year'],
@@ -78,7 +78,7 @@ export const DOCUMENT_TYPES: DocumentType[] = [
     isResidenceProof: true,
     points: 100,
     originalOrCopy: 'Certified copy. Must be on headed paper and signed.',
-    niNote: 'This is often the safest strong document for a Northern Ireland applicant.',
+    niNote: 'This is the safest strong document for a Northern Ireland applicant. It is the only one of the four that is not tied to an Irish body.',
     acceptanceCriteria: [
       NAME, ADDRESS, DATED_IN_PERIOD,
       kw('employment', 'It confirms your employment dates', ['employed', 'employment', 'employee', 'start date', 'commenced', 'salary', 'contract'],
@@ -93,7 +93,7 @@ export const DOCUMENT_TYPES: DocumentType[] = [
     isResidenceProof: true,
     points: 100,
     originalOrCopy: 'Certified copy.',
-    niNote: 'In Northern Ireland ask HMRC for your National Insurance record. The Irish version is the Department of Social Protection contribution statement.',
+    niNote: 'In Northern Ireland ask HMRC for your National Insurance record. The Department names only the Irish version, so this may not be accepted. Ask first.',
     acceptanceCriteria: [
       NAME, DATED_IN_PERIOD,
       kw('contributions', 'It is a contributions record', ['national insurance', 'contribution', 'social protection', 'hmrc', 'department of social'],
@@ -110,7 +110,7 @@ export const DOCUMENT_TYPES: DocumentType[] = [
     isResidenceProof: true,
     points: 50,
     originalOrCopy: 'Certified copy.',
-    niNote: 'Power NI, Firmus, SSE Airtricity, NI Water, BT, Sky or Virgin bills all fit here.',
+    niNote: 'Power NI, Firmus, SSE Airtricity, NI Water, BT, Sky or Virgin bills should fit here. The Department names no Northern Ireland supplier anywhere, so this is a sensible match, not published guidance.',
     acceptanceCriteria: [
       NAME, ADDRESS, DATED_IN_PERIOD,
       kw('utility', 'It is a utility bill', ['electricity', 'gas', 'water', 'broadband', 'energy', 'power', 'bill', 'account number'], 'Gas, electricity, water or broadband.'),

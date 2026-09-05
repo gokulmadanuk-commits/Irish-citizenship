@@ -50,8 +50,8 @@ export function AbsencesPanel({ absences, assessment, onSave, onRemove }: {
             <span className="text-sm text-ink-800">
               This trip took me off the island of Ireland.
               <span className="mt-1 block text-xs text-ink-600">
-                England, Scotland and Wales are not on the island of Ireland. Trips there count as time away.
-                Travel between Northern Ireland and the Republic does not.
+                England, Scotland, Wales, the Isle of Man and the Channel Islands are not on the island of Ireland.
+                Trips there count as time away. Travel between Northern Ireland and the Republic does not.
               </span>
             </span>
           </label>
