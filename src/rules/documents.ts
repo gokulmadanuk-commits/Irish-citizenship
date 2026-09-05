@@ -266,6 +266,32 @@ export const DOCUMENT_TYPES: DocumentType[] = [
     acceptanceCriteria: [NAME, HAS_DATE, kw('char', 'It is signed and witnessed', ['declare', 'witness', 'solicitor', 'commissioner for oaths', 'notary', 'peace commissioner'], 'Signed in person in front of the witness.')],
   },
 
+  {
+    docId: 'police-certificate',
+    name: 'Police certificate for your time in the UK',
+    category: 'good-character',
+    whyNeeded: 'Garda vetting only covers the Republic. Because you live outside the State, you must give a police report for where you live. Applicants in Northern Ireland are asked for a report from the police there.',
+    isResidenceProof: false,
+    originalOrCopy: 'The certificate as issued. Ask the Citizenship Division which one they want before you pay for it.',
+    niNote: 'There are three candidates and the Department does not name one: an ACRO police certificate, an AccessNI basic check, or a PSNI subject access reply. Ask first through the Customer Service Portal.',
+    acceptanceCriteria: [
+      NAME, HAS_DATE,
+      kw('police', 'It is from a police body', ['police', 'psni', 'acro', 'accessni', 'criminal record', 'disclosure', 'conviction'], 'Issued by ACRO, AccessNI or the PSNI.'),
+    ],
+  },
+  {
+    docId: 'police-certificate-other',
+    name: 'Police certificate from any other country you lived in',
+    category: 'good-character',
+    whyNeeded: 'You must give a police report from every country you lived in, including the one you came from.',
+    isResidenceProof: false,
+    originalOrCopy: 'The certificate as issued, with a professional translation if it is not in English or Irish.',
+    acceptanceCriteria: [
+      NAME, HAS_DATE,
+      kw('police-o', 'It is from a police body', ['police', 'criminal record', 'conviction', 'certificate of conduct', 'clearance'], 'Issued by the police or justice body of that country.'),
+    ],
+  },
+
   // ---------- Living together, now ----------
   {
     docId: 'shared-address-proof',
@@ -285,7 +311,7 @@ export const DOCUMENT_TYPES: DocumentType[] = [
     whyNeeded: 'Time in Northern Ireland only counts while you hold a valid UK permission. Study permission and a pending asylum claim do not count.',
     isResidenceProof: false,
     originalOrCopy: 'eVisa share code, UKVI account records and your Home Office decision letters. Keep dated screenshots.',
-    niNote: 'Share codes expire after 90 days, so take dated screenshots of your status and keep every decision letter.',
+    niNote: 'Share codes expire after 90 days, so take dated screenshots of your status and keep every decision letter. Biometric residence permit cards have expired and can only be used in limited ways, and not after 31 December 2026.',
     acceptanceCriteria: [
       NAME, HAS_DATE,
       kw('uk-status', 'It shows a UK permission and its dates', ['home office', 'ukvi', 'leave to remain', 'leave to enter', 'visa', 'evisa', 'biometric residence permit', 'share code'], 'It must show the dates your permission runs from and to.'),

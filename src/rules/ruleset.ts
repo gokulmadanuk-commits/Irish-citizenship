@@ -74,6 +74,7 @@ export const RULESET: Ruleset = {
   sharedAddressMonths: 3,
 
   coreDocumentIds: [
+    'police-certificate',
     'passport-biometric',
     'passport-certification-form',
     'birth-certificate',
@@ -161,7 +162,7 @@ export const RULESET: Ruleset = {
     {
       id: 'good-character',
       title: 'Good character',
-      plainEnglish: 'You must be of good character. The Gardaí give a report. You must declare every conviction, driving offence, caution and open case, from any country.',
+      plainEnglish: 'You must be of good character. You must declare every offence, from any country, however long ago, including spent convictions. Leaving one out is worse than having one.',
       legalBasis: 'Section 15A(1)(b)',
       sources: [ACT_15A, CI],
     },
@@ -212,9 +213,21 @@ export const RULESET: Ruleset = {
       priority: 'nice-to-have',
     },
     {
+      id: 'std:police-report',
+      title: 'Ask which police certificate they want for Northern Ireland',
+      detail: 'Garda vetting only covers the Republic. Because you live outside the State you must give a police report as well. Three could fit: an ACRO police certificate, an AccessNI basic check, or a PSNI subject access reply. The Department does not say which, so ask through the Customer Service Portal before you pay.',
+      priority: 'important',
+    },
+    {
+      id: 'std:spent-convictions',
+      title: 'Declare every offence, even old and spent ones',
+      detail: 'You must list every offence wherever it happened and however long ago, including spent convictions and traffic offences. UK rehabilitation rules do not apply here. Giving false information can mean a fine of up to 50,000 euro, five years in prison, and loss of citizenship even after it is granted.',
+      priority: 'important',
+    },
+    {
       id: 'std:vetting',
-      title: 'Finish Garda e-vetting when they email you',
-      detail: 'After you submit, you get a link to the e-vetting system. Complete it through the portal.',
+      title: 'Finish Garda e-vetting when they contact you',
+      detail: 'You get an invitation to the e-vetting system. Watch the email address you gave them. An unfinished vetting form holds up your whole application. Give the full six character postcode for every Northern Ireland address you lived at.',
       priority: 'nice-to-have',
     },
   ],
@@ -246,6 +259,8 @@ export const RULESET: Ruleset = {
     'Copies must be certified in person. A posted or emailed certification is refused.',
     'Do not upload the same file to more than one year, and do not merge several documents into one PDF.',
     'The old paper form asks about absences from "the State". On this route the correct test is absence from the island of Ireland.',
+    'Spent convictions still have to be declared. UK rehabilitation rules do not apply to this application.',
+    'Your biometric residence permit card has expired. Proof of UK status now comes from your UKVI account. An expired card can only be used in limited ways, and not after 31 December 2026.',
   ],
 
   uncertainties: [
@@ -255,6 +270,7 @@ export const RULESET: Ruleset = {
     'Whether the 70 day absence allowance applies only to the final unbroken year, or also to the earlier years. The wording of the law points to the final year only.',
     'Official sources give different processing times: 12 months from Immigration Service Delivery, 19 months from Citizens Information.',
     'Photographs and Irish referees were needed on the old paper form. They do not appear in the current online guidance.',
+    'Which police certificate the Department accepts for a Northern Ireland resident. Its guidance says applicants living outside the State must give a police clearance certificate, but it never names the body. A parliamentary answer says applicants in Northern Ireland provide a PSNI report.',
   ],
 
   allSources: [ACT_15A, ACT_2023, SI_389, ISD_GUIDE, ISD_PROOFS, CI],
