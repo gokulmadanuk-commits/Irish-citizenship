@@ -216,3 +216,60 @@ describe('next steps', () => {
     expect(a.nextSteps.some((s) => s.id === 'proof:year1')).toBe(true)
   })
 })
+
+describe('sections line up with next steps', () => {
+  it('reports a status for every section', () => {
+    const a = assess(profile(), [], [], {}, APPLY)
+    expect(a.sections).toHaveLength(7)
+    expect(a.sections.map((s) => s.id)).toContain('shared-home')
+  })
+
+  it('marks a section done once its documents are accepted', () => {
+    const a = assess(profile(), [doc('spouse-irish-proof', '', '')], [], {}, APPLY)
+    expect(a.sections.find((s) => s.id === 'spouse-citizenship')?.state).toBe('pass')
+  })
+
+  it('counts the six shared address proofs', () => {
+    const six = Array.from({ length: 6 }, (_, i) => ({
+      ...doc('shared-address-proof', '', ''), id: `shared-${i}`,
+    }))
+    const partial = assess(profile(), six.slice(0, 4), [], {}, APPLY)
+    expect(partial.sections.find((s) => s.id === 'shared-home')?.state).toBe('fail')
+    const full = assess(profile(), six, [], {}, APPLY)
+    expect(full.sections.find((s) => s.id === 'shared-home')?.state).toBe('pass')
+  })
+
+  it('points each paperwork step at the section that fixes it', () => {
+    const a = assess(profile(), [], [], {}, APPLY)
+    const withSection = a.nextSteps.filter((s) => s.sectionId)
+    expect(withSection.length).toBeGreaterThan(2)
+    for (const s of withSection) {
+      expect(a.sections.some((x) => x.id === s.sectionId), `${s.id} points at a missing section`).toBe(true)
+    }
+    expect(a.nextSteps.find((s) => s.id === 'proof:year1')?.sectionId).toBe('residence')
+  })
+})
+
+describe('one next step per document section', () => {
+  it('gives every unfinished section its own step, pointed at that section', () => {
+    const a = assess(profile(), [], [], {}, APPLY)
+    for (const s of a.sections) {
+      if (s.kind === 'per-year' || s.state === 'pass') continue
+      const step = a.nextSteps.find((x) => x.id === `section:${s.id}`)
+      expect(step, `no step for section ${s.id}`).toBeDefined()
+      expect(step?.sectionId).toBe(s.id)
+      expect(step?.priority).toBe('blocker')
+    }
+  })
+
+  it('drops the step once the section is done', () => {
+    const a = assess(profile(), [doc('spouse-irish-proof', '', '')], [], {}, APPLY)
+    expect(a.nextSteps.some((x) => x.id === 'section:spouse-citizenship')).toBe(false)
+  })
+
+  it('does not also repeat those sections as one lumped paperwork step', () => {
+    const a = assess(profile(), [], [], {}, APPLY)
+    expect(a.nextSteps.some((s) => s.id === 'fix:core-documents')).toBe(false)
+    expect(a.nextSteps.some((s) => s.id === 'fix:shared-address')).toBe(false)
+  })
+})

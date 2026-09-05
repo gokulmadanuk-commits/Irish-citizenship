@@ -20,6 +20,12 @@ const TABS = [
 export default function App() {
   const t = useTracker()
   const [tab, setTab] = useState<string>('overview')
+  const [openSectionId, setOpenSectionId] = useState<string | null>(null)
+
+  const openSection = (sectionId: string) => {
+    setOpenSectionId(sectionId)
+    setTab('documents')
+  }
 
   if (!t.ready) {
     return <div className="grid h-full place-items-center text-sm text-ink-600">Loading your file…</div>
@@ -45,7 +51,7 @@ export default function App() {
         </div>
         <nav className="mx-auto flex max-w-6xl gap-1 overflow-x-auto px-2 pb-2">
           {TABS.map((x) => (
-            <button key={x.id} onClick={() => setTab(x.id)}
+            <button key={x.id} onClick={() => { setTab(x.id); if (x.id !== 'documents') setOpenSectionId(null) }}
               className={`shrink-0 rounded-lg px-3 py-1.5 text-sm font-medium transition ${
                 tab === x.id ? 'bg-shamrock-600 text-white' : 'text-ink-600 hover:bg-ink-100'
               }`}>
@@ -65,6 +71,7 @@ export default function App() {
         {tab === 'profile' && <ProfilePanel profile={t.profile} onChange={t.updateProfile} />}
         {tab === 'documents' && (
           <DocumentsPanel profile={t.profile} documents={t.documents} assessment={t.assessment}
+            openSectionId={openSectionId}
             onUpsert={t.upsertDocument} onRemove={t.removeDocument} />
         )}
         {tab === 'trips' && (
@@ -72,7 +79,8 @@ export default function App() {
             onSave={t.upsertAbsence} onRemove={t.removeAbsence} />
         )}
         {tab === 'checklist' && (
-          <ChecklistPanel assessment={t.assessment} overrides={t.stepOverrides} onToggle={t.toggleStep} />
+          <ChecklistPanel assessment={t.assessment} overrides={t.stepOverrides} onToggle={t.toggleStep}
+            onOpenSection={openSection} />
         )}
         {tab === 'rules' && <RulesPanel />}
       </main>

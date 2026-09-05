@@ -1,5 +1,6 @@
 import type { Assessment } from '../lib/types'
 import { Card, Empty, Progress } from './ui'
+import { sectionById } from '../rules/sections'
 
 const PRIORITY_LABEL = {
   blocker: 'Must do',
@@ -13,10 +14,11 @@ const PRIORITY_STYLE = {
   'nice-to-have': 'bg-ink-100 text-ink-600 ring-ink-200',
 } as const
 
-export function ChecklistPanel({ assessment, overrides, onToggle }: {
+export function ChecklistPanel({ assessment, overrides, onToggle, onOpenSection }: {
   assessment: Assessment
   overrides: Record<string, boolean>
   onToggle: (id: string, value: boolean) => void
+  onOpenSection: (sectionId: string) => void
 }) {
   const steps = assessment.nextSteps
   const done = steps.filter((s) => overrides[s.id]).length
@@ -46,6 +48,14 @@ export function ChecklistPanel({ assessment, overrides, onToggle }: {
                         {s.title}
                       </span>
                       <span className="mt-0.5 block text-sm text-ink-600">{s.detail}</span>
+                      {s.sectionId && (
+                        <button
+                          onClick={(e) => { e.preventDefault(); onOpenSection(s.sectionId!) }}
+                          className="mt-1 text-xs font-semibold text-shamrock-700 hover:underline"
+                        >
+                          Open "{sectionById(s.sectionId)?.title ?? 'Documents'}" →
+                        </button>
+                      )}
                     </span>
                     <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ${PRIORITY_STYLE[g.priority]}`}>
                       {PRIORITY_LABEL[g.priority]}

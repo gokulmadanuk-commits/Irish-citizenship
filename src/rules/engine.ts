@@ -2,10 +2,12 @@
 // Every legal number it uses comes from ruleset.ts, so the law and the code stay apart.
 import { addYears, daysBetween, absenceDaysInWindow, formatLong, isAfter, isBefore, overlapDays } from '../lib/dates'
 import type {
-  Absence, Assessment, CheckState, NextStep, Profile, ResidenceYear, RuleOutcome, StoredDocument,
+  Absence, Assessment, CheckState, NextStep, Profile, ResidenceYear, RuleOutcome,
+  SectionStatus, StoredDocument,
 } from '../lib/types'
 import { RULESET } from './ruleset'
 import { DOCUMENT_TYPES, docTypeById } from './documents'
+import { DOCUMENT_SECTIONS, sectionIdForDocType, sectionIdForRule } from './sections'
 
 const worst = (states: CheckState[]): CheckState =>
   states.includes('fail') ? 'fail' : states.includes('unknown') ? 'unknown' : 'pass'
@@ -250,11 +252,70 @@ export function assess(
       ticked ? 'You have confirmed this.' : 'Only you can confirm this. Tick it on the Next steps screen when it is true.')
   }
 
-  const nextSteps = buildNextSteps(profile, docs, years, rules, stepOverrides)
+  const sections = buildSections(docs, years)
+  const nextSteps = buildNextSteps(profile, docs, years, rules, sections, stepOverrides)
   const points = rules.reduce((s, r) => s + (r.state === 'pass' ? 1 : r.state === 'unknown' ? 0.5 : 0), 0)
   const readinessPercent = Math.round((points / Math.max(1, rules.length)) * 100)
 
-  return { applicationDate, years, rules, nextSteps, readinessPercent, overall: worst(rules.map((r) => r.state)) }
+  return { applicationDate, years, rules, sections, nextSteps, readinessPercent, overall: worst(rules.map((r) => r.state)) }
+}
+
+/** Works out where each Documents screen section stands. */
+export function buildSections(docs: StoredDocument[], years: ResidenceYear[]): SectionStatus[] {
+  return DOCUMENT_SECTIONS.map((section) => {
+    const own = docs.filter((d) => section.docTypeIds.includes(d.docTypeId)
+      || (section.optionalDocTypeIds ?? []).includes(d.docTypeId))
+    const accepted = own.filter(isDocumentAccepted)
+    const base = {
+      id: section.id,
+      title: section.title,
+      why: section.why,
+      kind: section.kind,
+      documentIds: own.map((d) => d.id),
+    }
+
+    if (section.kind === 'per-year') {
+      const needed = years.filter((y) => y.evidenceRequired)
+      const done = needed.filter((y) => y.proofState === 'pass').length
+      return {
+        ...base,
+        state: worst(needed.map((y) => y.proofState)),
+        message: `${done} of ${needed.length} years fully proved.`,
+        missingDocTypeIds: [],
+        uploaded: done,
+        required: needed.length,
+      }
+    }
+
+    if (section.kind === 'count') {
+      const required = section.required ?? 1
+      const uploaded = accepted.length
+      return {
+        ...base,
+        state: uploaded >= required ? 'pass' : 'fail',
+        message: uploaded >= required
+          ? `All ${required} uploaded and accepted.`
+          : `${uploaded} of ${required} uploaded and accepted.`,
+        missingDocTypeIds: [],
+        uploaded,
+        required,
+      }
+    }
+
+    const missing = section.docTypeIds.filter(
+      (id) => !accepted.some((d) => d.docTypeId === id),
+    )
+    return {
+      ...base,
+      state: missing.length === 0 ? 'pass' : 'fail',
+      message: missing.length === 0
+        ? 'Everything here is uploaded and accepted.'
+        : `Still needed: ${missing.map((id) => docTypeById(id)?.name ?? id).join(', ')}.`,
+      missingDocTypeIds: missing,
+      uploaded: section.docTypeIds.length - missing.length,
+      required: section.docTypeIds.length,
+    }
+  })
 }
 
 function labelForSpouseProof(v: Profile['spouseIrishCitizenshipProof']) {
@@ -272,11 +333,14 @@ function buildNextSteps(
   docs: StoredDocument[],
   years: ResidenceYear[],
   rules: RuleOutcome[],
+  sections: SectionStatus[],
   overrides: Record<string, boolean>,
 ): NextStep[] {
   const steps: NextStep[] = []
-  const push = (id: string, title: string, detail: string, priority: NextStep['priority']) => {
-    steps.push({ id, title, detail, priority, done: !!overrides[id] })
+  const push = (
+    id: string, title: string, detail: string, priority: NextStep['priority'], sectionId?: string,
+  ) => {
+    steps.push({ id, title, detail, priority, done: !!overrides[id], sectionId })
   }
 
   if (!profile.applicantFullName || !profile.marriageDate || !profile.movedToIslandOn) {
@@ -284,29 +348,37 @@ function buildNextSteps(
       'Add your full name, your wedding date and the date you moved to the island of Ireland. Every check needs them.', 'blocker')
   }
 
-  const coveredByYearSteps = new Set(['residence-evidence'])
+  // These rules are shown as their own Documents screen sections instead, so the
+  // two screens line up one for one rather than repeating each other.
+  const coveredBySections = new Set(['residence-evidence', 'core-documents', 'shared-address'])
   for (const r of rules) {
-    if (r.state === 'fail' && !coveredByYearSteps.has(r.ruleId)) {
-      push(`fix:${r.ruleId}`, r.title, r.message, 'blocker')
+    if (r.state === 'fail' && !coveredBySections.has(r.ruleId)) {
+      push(`fix:${r.ruleId}`, r.title, r.message, 'blocker', sectionIdForRule(r.ruleId))
     }
+  }
+
+  for (const section of sections) {
+    if (section.kind === 'per-year' || section.state === 'pass') continue
+    push(`section:${section.id}`, section.title, section.message, 'blocker', section.id)
   }
 
   for (const y of years) {
     if (y.evidenceRequired && y.proofState !== 'pass') {
       push(`proof:year${y.index}`, `Add proof of living here for Year ${y.index}`,
-        `${formatLong(y.start)} to ${formatLong(y.end)}. ${y.proofMessage}`, 'important')
+        `${formatLong(y.start)} to ${formatLong(y.end)}. ${y.proofMessage}`, 'important', 'residence')
     }
   }
 
   for (const d of docs) {
     if (!d.userConfirmed && d.checks.some((c) => c.state !== 'pass')) {
       push(`review:${d.id}`, `Check "${d.fileName}"`,
-        'The app could not confirm everything on this document. Open it, confirm it by hand, or upload a clearer scan.', 'important')
+        'The app could not confirm everything on this document. Open it, confirm it by hand, or upload a clearer scan.',
+        'important', sectionIdForDocType(d.docTypeId))
     }
   }
 
   for (const r of rules) {
-    if (r.state === 'unknown') push(`confirm:${r.ruleId}`, r.title, r.message, 'important')
+    if (r.state === 'unknown') push(`confirm:${r.ruleId}`, r.title, r.message, 'important', sectionIdForRule(r.ruleId))
   }
 
   for (const s of RULESET.standingSteps) push(s.id, s.title, s.detail, s.priority)

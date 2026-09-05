@@ -143,12 +143,44 @@ export interface NextStep {
   detail: string
   priority: 'blocker' | 'important' | 'nice-to-have'
   done: boolean
+  /** The Documents screen section that fixes this step, when one does. */
+  sectionId?: string
+}
+
+/** A group of uploads on the Documents screen. */
+export interface DocumentSection {
+  id: string
+  title: string
+  why: string
+  /** 'per-year' scores 150 points a year. 'count' needs a number of files. 'each-required' needs one of each type. */
+  kind: 'per-year' | 'count' | 'each-required'
+  required?: number
+  docTypeIds: string[]
+  optionalDocTypeIds?: string[]
+  /** The rules this section provides the paperwork for. */
+  ruleIds: string[]
+}
+
+export interface SectionStatus {
+  id: string
+  title: string
+  why: string
+  kind: DocumentSection['kind']
+  state: CheckState
+  message: string
+  /** Documents uploaded into this section. */
+  documentIds: string[]
+  /** Document types still missing, for an 'each-required' section. */
+  missingDocTypeIds: string[]
+  uploaded: number
+  required: number
 }
 
 export interface Assessment {
   applicationDate: ISODate
   years: ResidenceYear[]
   rules: RuleOutcome[]
+  sections: SectionStatus[]
   nextSteps: NextStep[]
   readinessPercent: number
   overall: CheckState
