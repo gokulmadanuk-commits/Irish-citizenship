@@ -82,9 +82,18 @@ async function renderPdfPages(file: Blob, maxPages: number, onProgress?: (p: num
   }
 }
 
+// The OCR engine is served from this app, not from a content delivery network,
+// so no part of a document ever leaves the device and the app works offline.
+const OCR_PATHS = {
+  workerPath: `${import.meta.env.BASE_URL}tesseract/worker.min.js`,
+  corePath: `${import.meta.env.BASE_URL}tesseract`,
+  langPath: `${import.meta.env.BASE_URL}tesseract`,
+  gzip: true,
+}
+
 async function runOcr(images: Blob[], onProgress?: (p: number, l: string) => void) {
   const { createWorker } = await import('tesseract.js')
-  const worker = await createWorker('eng')
+  const worker = await createWorker('eng', 1, OCR_PATHS)
   try {
     const texts: string[] = []
     let confSum = 0

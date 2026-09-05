@@ -40,8 +40,7 @@ export function buildYears(
       .filter((a) => a.countsAsAbsence && a.departure && a.ret)
       .reduce((sum, a) => sum + absenceDaysInWindow(a.departure, a.ret, start, end), 0)
 
-    const daysAbsent = Math.min(daysInWindow, notYetArrived + tripDays)
-    const daysPresent = daysInWindow - daysAbsent
+    const daysPresent = Math.max(0, daysInWindow - notYetArrived - tripDays)
     const claimed = daysPresent > 0
 
     const limit = role === 'continuous' ? RULESET.continuousYearAbsenceLimitDays : null
@@ -66,7 +65,9 @@ export function buildYears(
         absenceMessage = `You had not moved to the island of Ireland for ${notYetArrived} days of this year. The final year must be unbroken.`
       }
     } else {
-      absenceMessage = `${daysPresent} days on the island of Ireland in this year.`
+      absenceMessage = notYetArrived > 0
+        ? `${daysPresent} days on the island of Ireland. You had not moved here yet for ${notYetArrived} days of this year.`
+        : `${daysPresent} days on the island of Ireland in this year.`
     }
 
     const proofDocs = docs.filter((d) => {
@@ -87,9 +88,11 @@ export function buildYears(
       start,
       end,
       daysInWindow,
-      daysAbsent,
+      daysBeforeArrival: notYetArrived,
+      daysAbsent: tripDays,
       daysPresent,
       claimed,
+      evidenceRequired: false,
       absenceLimit: limit,
       absenceCeiling: ceiling,
       absenceState,
@@ -98,16 +101,38 @@ export function buildYears(
       points,
       pointsRequired: RULESET.pointsRequiredPerYear,
       hasStrongProof,
-      ...judgeProof(claimed, points, hasStrongProof, proofDocs.length),
+      ...judgeProof(false, points, hasStrongProof, proofDocs.length),
     })
+  }
+
+  markYearsNeedingEvidence(years)
+  for (const y of years) {
+    Object.assign(y, judgeProof(y.evidenceRequired, y.points, y.hasStrongProof, y.proofDocumentIds.length))
   }
   return years
 }
 
-function judgeProof(claimed: boolean, points: number, hasStrong: boolean, count: number) {
+/**
+ * You only prove the years you actually rely on. The unbroken final year is always
+ * one of them. After that, take the most recent years until the two year total is
+ * covered. Immigration Service Delivery asks applicants not to send more than that.
+ */
+function markYearsNeedingEvidence(years: ResidenceYear[]) {
+  const y1 = years.find((y) => y.role === 'continuous')
+  if (y1) y1.evidenceRequired = true
+  let remaining = RULESET.lookbackDaysRequired
+  for (const y of years.filter((x) => x.role === 'lookback')) {
+    if (remaining <= 0) break
+    if (!y.claimed) continue
+    y.evidenceRequired = true
+    remaining -= y.daysPresent
+  }
+}
+
+function judgeProof(required: boolean, points: number, hasStrong: boolean, count: number) {
   const need = RULESET.pointsRequiredPerYear
-  if (!claimed) {
-    return { proofState: 'pass' as CheckState, proofMessage: 'You were not living here in this year, so no proof is needed.' }
+  if (!required) {
+    return { proofState: 'pass' as CheckState, proofMessage: 'You do not rely on this year, so no proof is needed for it.' }
   }
   if (count === 0) {
     return { proofState: 'fail' as CheckState, proofMessage: `0 of ${need} points. You need one strong proof and one supporting proof.` }
@@ -119,11 +144,6 @@ function judgeProof(claimed: boolean, points: number, hasStrong: boolean, count:
     return { proofState: 'unknown' as CheckState, proofMessage: `${points} points, but none of them is a strong proof. You must include at least one strong document.` }
   }
   return { proofState: 'pass' as CheckState, proofMessage: `${points} of ${need} points, including a strong proof.` }
-}
-
-/** Which lookback years the applicant relies on to make up the total residence. */
-function claimedLookbackYears(years: ResidenceYear[]): ResidenceYear[] {
-  return years.filter((y) => y.role === 'lookback' && y.claimed)
 }
 
 export function assess(
@@ -204,7 +224,7 @@ export function assess(
       : 'Add your UK immigration status. Residence in Northern Ireland only counts while you hold a valid UK permission.')
 
   // Proof of residence, year by year.
-  const proofYears = [y1, ...claimedLookbackYears(years)]
+  const proofYears = years.filter((y) => y.evidenceRequired)
   add('residence-evidence', worst(proofYears.map((y) => y.proofState)),
     proofYears.map((y) => `Year ${y.index}: ${y.points}/${y.pointsRequired} points.`).join(' '))
 
@@ -269,7 +289,7 @@ function buildNextSteps(
   }
 
   for (const y of years) {
-    if (y.claimed && y.proofState !== 'pass') {
+    if (y.evidenceRequired && y.proofState !== 'pass') {
       push(`proof:year${y.index}`, `Add proof of living here for Year ${y.index}`,
         `${formatLong(y.start)} to ${formatLong(y.end)}. ${y.proofMessage}`, 'important')
     }

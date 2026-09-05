@@ -122,7 +122,7 @@ export function DocumentsPanel({ profile, documents, assessment, onUpsert, onRem
       <div className="grid gap-5 lg:grid-cols-2">
         <Card title="Proof of living here, year by year" subtitle="Each year you claim needs 150 points.">
           <div className="grid gap-3">
-            {assessment.years.filter((y) => y.claimed).map((y) => (
+            {assessment.years.filter((y) => y.evidenceRequired).map((y) => (
               <div key={y.index} className="rounded-xl border border-ink-200 p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div>

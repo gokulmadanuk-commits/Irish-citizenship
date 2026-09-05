@@ -59,7 +59,8 @@ describe('residence windows', () => {
     const years = buildYears(APPLY, '2023-05-01', [], [])
     // Year 4 runs Sep 2022 to Sep 2023; the applicant arrived on 1 May 2023.
     expect(years[3].daysPresent).toBeGreaterThan(0)
-    expect(years[3].daysAbsent).toBeGreaterThan(200)
+    expect(years[3].daysBeforeArrival).toBeGreaterThan(200)
+    expect(years[3].daysAbsent).toBe(0)
     // Year 5 is entirely before arrival.
     expect(years[4].claimed).toBe(false)
     expect(years[4].daysPresent).toBe(0)
@@ -172,7 +173,15 @@ describe('the 150 point residence scorecard', () => {
   it('asks for no proof in a year before you arrived', () => {
     const a = assess(profile(), [], [], {}, APPLY)
     expect(a.years[4].claimed).toBe(false)
+    expect(a.years[4].evidenceRequired).toBe(false)
     expect(a.years[4].proofState).toBe('pass')
+  })
+
+  it('only asks for proof of the years you actually rely on', () => {
+    const a = assess(profile(), [], [], {}, APPLY)
+    const required = a.years.filter((y) => y.evidenceRequired).map((y) => y.index)
+    // Year 1 must be unbroken; years 2 and 3 alone cover the two year total.
+    expect(required).toEqual([1, 2, 3])
   })
 })
 

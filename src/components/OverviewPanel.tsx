@@ -39,7 +39,7 @@ export function OverviewPanel({ assessment, profile, onGoTo }: {
       </Card>
 
       <div className="grid gap-5 lg:grid-cols-3">
-        {assessment.years.filter((y) => y.claimed).map((y) => (
+        {assessment.years.filter((y) => y.evidenceRequired || y.claimed).map((y) => (
           <Card key={y.index} title={y.role === 'continuous' ? 'Year 1 · must be unbroken' : `Year ${y.index}`}
             subtitle={`${formatLong(y.start)} to ${formatLong(y.end)}`}>
             <dl className="grid gap-2 text-sm">
@@ -48,15 +48,23 @@ export function OverviewPanel({ assessment, profile, onGoTo }: {
                 <dd className="font-semibold text-ink-900">{y.daysPresent} of {y.daysInWindow}</dd>
               </div>
               <div className="flex items-center justify-between">
-                <dt className="text-ink-600">Days away</dt>
+                <dt className="text-ink-600">Days away on trips</dt>
                 <dd className="font-semibold text-ink-900">
                   {y.daysAbsent}{y.absenceLimit !== null && ` of ${y.absenceLimit} allowed`}
                 </dd>
               </div>
+              {y.daysBeforeArrival > 0 && (
+                <div className="flex items-center justify-between">
+                  <dt className="text-ink-600">Before you moved here</dt>
+                  <dd className="font-semibold text-ink-900">{y.daysBeforeArrival} days</dd>
+                </div>
+              )}
               <div className="flex items-center justify-between">
                 <dt className="text-ink-600">Proof points</dt>
                 <dd className="flex items-center gap-2">
-                  <span className="font-semibold text-ink-900">{y.points}/{y.pointsRequired}</span>
+                  {y.evidenceRequired
+                    ? <span className="font-semibold text-ink-900">{y.points}/{y.pointsRequired}</span>
+                    : <span className="text-ink-600">not needed</span>}
                   <StatePill state={y.proofState} />
                 </dd>
               </div>

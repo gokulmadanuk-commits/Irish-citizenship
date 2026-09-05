@@ -104,10 +104,15 @@ export interface ResidenceYear {
   start: ISODate
   end: ISODate
   daysInWindow: number
+  /** Days in this window before the applicant moved to the island of Ireland. */
+  daysBeforeArrival: number
+  /** Days away on logged trips. */
   daysAbsent: number
   daysPresent: number
   /** True when the applicant had arrived on the island for at least part of this window. */
   claimed: boolean
+  /** True when this year is one of the years relied on, so it needs 150 points of proof. */
+  evidenceRequired: boolean
   /** Only the continuous year has a hard absence limit. */
   absenceLimit: number | null
   absenceCeiling: number | null

@@ -11,6 +11,8 @@ what is still missing.
 
 - Files are stored in your browser's own database (IndexedDB) on this device.
 - Text is read from documents on this device, using pdf.js and Tesseract OCR in the browser.
+- The OCR engine and its English language data are served from this app, not from a
+  content delivery network. `npm install` copies them into `public/tesseract` for you.
 - There is no server, no account, and no upload. Turn off your internet and it still works.
 - "Erase all data" in the top bar deletes everything, including the stored files.
 
@@ -29,6 +31,7 @@ Other commands:
 npm run build     # production build into dist/
 npm run preview   # serve the production build
 npm test          # run the rules engine tests
+npm run setup:ocr # re-fetch the offline OCR engine into public/tesseract
 ```
 
 ## What is in here
@@ -42,6 +45,7 @@ npm test          # run the rules engine tests
 | `src/lib/extract.ts` | Reads text out of PDFs and scans, on this device |
 | `src/lib/dates.ts` | Day counting for residence and trips away |
 | `src/components/` | The screens |
+| `scripts/setup-ocr.mjs` | Copies the offline OCR engine into `public/tesseract` after install |
 
 ## How the checks work
 
