@@ -65,6 +65,7 @@ export type AutoTest =
   | { kind: 'containsApplicantName' }
   | { kind: 'containsAddress' }
   | { kind: 'containsAnyKeyword'; keywords: string[] }
+  | { kind: 'lacksAnyKeyword'; keywords: string[]; warning: string }
   | { kind: 'hasDateInCoveredPeriod' }
   | { kind: 'hasAnyDate' }
 

@@ -43,6 +43,12 @@ function evaluate(
         ? mk('pass', 'The document has the wording we expect.')
         : mk('unknown', `Could not find any of: ${kws.slice(0, 6).join(', ')}. Check by hand.`)
     }
+    case 'lacksAnyKeyword': {
+      const { keywords, warning } = c.autoTest
+      return containsAnyKeyword(text, keywords)
+        ? mk('unknown', warning)
+        : mk('pass', 'None of the wording we warn about is on this document.')
+    }
     case 'hasAnyDate': {
       return findDates(text).length > 0
         ? mk('pass', 'The document is dated.')

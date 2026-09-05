@@ -2,9 +2,11 @@
 // PDFs with a text layer are read directly. Scans and photos go through OCR
 // (optical character recognition: a computer reading letters in a picture).
 import * as pdfjs from 'pdfjs-dist'
-import pdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
+import PdfWorker from './pdf-worker?worker'
+import { installPdfPolyfills } from './pdf-polyfills'
 
-pdfjs.GlobalWorkerOptions.workerSrc = pdfWorker
+installPdfPolyfills()
+pdfjs.GlobalWorkerOptions.workerPort = new PdfWorker()
 
 export interface ExtractResult {
   text: string
@@ -72,12 +74,13 @@ async function renderPdfPages(file: Blob, maxPages: number, onProgress?: (p: num
       canvas.height = viewport.height
       const ctx = canvas.getContext('2d')
       if (!ctx) continue
-      await page.render({ canvas, canvasContext: ctx, viewport }).promise
+      await page.render({ canvas, canvasContext: ctx, viewport } as Parameters<typeof page.render>[0]).promise
       const blob: Blob | null = await new Promise((res) => canvas.toBlob(res, 'image/png'))
       if (blob) out.push(blob)
     }
     return out
-  } catch {
+  } catch (err) {
+    console.error('Could not turn the PDF into pictures for scanning', err)
     return []
   }
 }
