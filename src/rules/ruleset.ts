@@ -11,8 +11,10 @@ export interface RuleMeta {
   sources: string[]
 }
 
-const ISD_GUIDE = 'https://www.irishimmigration.ie/citizenship/'
-const ISD_PROOFS = 'https://www.irishimmigration.ie/citizenship/proofs-of-identity-and-residency/'
+const ISD_GUIDE = 'https://www.irishimmigration.ie/how-to-become-an-irish-citizen-guide/'
+const ISD_PROOFS = 'https://www.irishimmigration.ie/how-to-become-a-citizen/'
+const ISD_LAW = 'https://www.irishimmigration.ie/how-to-become-a-citizen/citizenship-law-policy-and-guidance/'
+const ISD_CALCULATOR = 'https://www.irishimmigration.ie/naturalisation-residency-calculator/'
 const CI = 'https://www.citizensinformation.ie/en/moving-country/irish-citizenship/becoming-an-irish-citizen-through-naturalisation/'
 const ACT_15A = 'https://revisedacts.lawreform.ie/eli/1956/act/26/revised/en/html'
 const ACT_2023 = 'https://www.irishstatutebook.ie/eli/2023/act/18/enacted/en/html'
@@ -273,7 +275,7 @@ export const RULESET: Ruleset = {
     'Which police certificate the Department accepts for a Northern Ireland resident. Its guidance says applicants living outside the State must give a police clearance certificate, but it never names the body. A parliamentary answer says applicants in Northern Ireland provide a PSNI report.',
   ],
 
-  allSources: [ACT_15A, ACT_2023, SI_389, ISD_GUIDE, ISD_PROOFS, CI],
+  allSources: [ACT_15A, ACT_2023, SI_389, ISD_GUIDE, ISD_PROOFS, ISD_LAW, ISD_CALCULATOR, CI],
 
   disclaimer:
     'This app is a tracker, not legal advice. Rules, forms and fees change. Check the official sources above, and get advice from a solicitor before you submit.',
