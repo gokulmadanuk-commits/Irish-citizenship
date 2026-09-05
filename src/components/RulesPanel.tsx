@@ -16,6 +16,9 @@ export function RulesPanel() {
           <Row term="Time away" desc={RULESET.explain.absences} />
           <Row term="Northern Ireland" desc={RULESET.explain.northernIreland} />
           <Row term="Your UK visa" desc={RULESET.explain.ukVisa} />
+          <Row term="Proof for each year" desc={RULESET.explain.evidence} />
+          <Row term="What it costs" desc={RULESET.fees} />
+          <Row term="How long it takes" desc={RULESET.processingTime} />
         </dl>
       </Card>
 
@@ -51,6 +54,7 @@ export function RulesPanel() {
               </div>
               <p className="mt-0.5 text-sm text-ink-600">{d.whyNeeded}</p>
               <p className="mt-1 text-xs text-ink-400">{d.originalOrCopy}</p>
+              {d.niNote && <p className="mt-1 rounded-lg bg-amber-50 px-2 py-1 text-xs text-ink-800">{d.niNote}</p>}
             </li>
           ))}
         </ul>

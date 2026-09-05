@@ -98,9 +98,13 @@ export function DocumentsPanel({ profile, documents, assessment, onUpsert, onRem
             <p className="mt-1 text-sm text-ink-600">{selectedType.whyNeeded}</p>
             <ul className="mt-2 grid gap-1">
               {selectedType.acceptanceCriteria.map((c) => (
-                <li key={c.id} className="text-xs text-ink-600">• {c.label}</li>
+                <li key={c.id} className="text-xs text-ink-600">• {c.label} <span className="text-ink-400">{c.hint}</span></li>
               ))}
             </ul>
+            <p className="mt-2 text-xs text-ink-400">{selectedType.originalOrCopy}</p>
+            {selectedType.niNote && (
+              <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-xs text-ink-800 ring-1 ring-amber-200">{selectedType.niNote}</p>
+            )}
           </div>
         )}
 
@@ -116,9 +120,9 @@ export function DocumentsPanel({ profile, documents, assessment, onUpsert, onRem
       </Card>
 
       <div className="grid gap-5 lg:grid-cols-2">
-        <Card title="Proof of living here, year by year" subtitle="Each year needs its own proofs.">
+        <Card title="Proof of living here, year by year" subtitle="Each year you claim needs 150 points.">
           <div className="grid gap-3">
-            {assessment.years.map((y) => (
+            {assessment.years.filter((y) => y.claimed).map((y) => (
               <div key={y.index} className="rounded-xl border border-ink-200 p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div>
@@ -126,6 +130,10 @@ export function DocumentsPanel({ profile, documents, assessment, onUpsert, onRem
                     <p className="text-xs text-ink-600">{formatLong(y.start)} to {formatLong(y.end)}</p>
                   </div>
                   <StatePill state={y.proofState} />
+                </div>
+                <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-ink-100">
+                  <div className={`h-full rounded-full ${y.points >= y.pointsRequired ? 'bg-shamrock-500' : 'bg-amber-400'}`}
+                    style={{ width: `${Math.min(100, (y.points / y.pointsRequired) * 100)}%` }} />
                 </div>
                 <p className="mt-2 text-sm text-ink-600">{y.proofMessage}</p>
               </div>

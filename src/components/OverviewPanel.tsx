@@ -39,8 +39,9 @@ export function OverviewPanel({ assessment, profile, onGoTo }: {
       </Card>
 
       <div className="grid gap-5 lg:grid-cols-3">
-        {assessment.years.map((y) => (
-          <Card key={y.index} title={`Year ${y.index}`} subtitle={`${formatLong(y.start)} to ${formatLong(y.end)}`}>
+        {assessment.years.filter((y) => y.claimed).map((y) => (
+          <Card key={y.index} title={y.role === 'continuous' ? 'Year 1 · must be unbroken' : `Year ${y.index}`}
+            subtitle={`${formatLong(y.start)} to ${formatLong(y.end)}`}>
             <dl className="grid gap-2 text-sm">
               <div className="flex items-center justify-between">
                 <dt className="text-ink-600">Days here</dt>
@@ -53,8 +54,11 @@ export function OverviewPanel({ assessment, profile, onGoTo }: {
                 </dd>
               </div>
               <div className="flex items-center justify-between">
-                <dt className="text-ink-600">Proof uploaded</dt>
-                <dd><StatePill state={y.proofState} /></dd>
+                <dt className="text-ink-600">Proof points</dt>
+                <dd className="flex items-center gap-2">
+                  <span className="font-semibold text-ink-900">{y.points}/{y.pointsRequired}</span>
+                  <StatePill state={y.proofState} />
+                </dd>
               </div>
             </dl>
             <p className="mt-3 text-xs text-ink-600">{y.proofMessage}</p>

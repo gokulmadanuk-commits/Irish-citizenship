@@ -46,8 +46,10 @@ export interface DocumentType {
   /** Proof of residence documents each cover a slice of time. */
   isResidenceProof: boolean
   originalOrCopy: string
-  /** How strong this document is as proof of residence for a year. */
-  weight?: number
+  /** ISD residency scorecard value: 100 for a strong (Type A) proof, 50 for a supporting (Type B) proof. */
+  points?: number
+  /** Notes shown under the document type in the app. */
+  niNote?: string
 }
 
 export interface Criterion {
@@ -93,18 +95,28 @@ export interface StoredDocument {
   notes: string
 }
 
+export type YearRole = 'continuous' | 'lookback'
+
 export interface ResidenceYear {
   index: number // 1 = the 12 months immediately before the application date
+  role: YearRole
   label: string
   start: ISODate
   end: ISODate
   daysInWindow: number
   daysAbsent: number
   daysPresent: number
-  /** Only meaningful for year 1, which has the strict continuous-residence test. */
+  /** True when the applicant had arrived on the island for at least part of this window. */
+  claimed: boolean
+  /** Only the continuous year has a hard absence limit. */
   absenceLimit: number | null
+  absenceCeiling: number | null
   absenceState: CheckState
+  absenceMessage: string
   proofDocumentIds: string[]
+  points: number
+  pointsRequired: number
+  hasStrongProof: boolean
   proofState: CheckState
   proofMessage: string
 }

@@ -67,13 +67,14 @@ export function AbsencesPanel({ absences, assessment, onSave, onRemove }: {
             <div className="grid gap-3">
               <div className="flex items-end gap-2">
                 <span className="text-4xl font-bold text-ink-900">{y1.daysAbsent}</span>
-                <span className="pb-1 text-sm text-ink-600">days away of {RULESET.finalYearAbsenceLimitDays} allowed</span>
+                <span className="pb-1 text-sm text-ink-600">days away of {RULESET.continuousYearAbsenceLimitDays} allowed</span>
               </div>
               <div className="h-3 w-full overflow-hidden rounded-full bg-ink-100">
                 <div className={`h-full rounded-full ${y1.absenceState === 'fail' ? 'bg-rose-500' : y1.absenceState === 'unknown' ? 'bg-amber-400' : 'bg-shamrock-500'}`}
-                  style={{ width: `${Math.min(100, (y1.daysAbsent / Math.max(1, RULESET.finalYearAbsenceLimitDays)) * 100)}%` }} />
+                  style={{ width: `${Math.min(100, (y1.daysAbsent / Math.max(1, RULESET.continuousYearAbsenceLimitDays)) * 100)}%` }} />
               </div>
-              <p className="text-sm text-ink-600">{RULESET.absenceRuleNote}</p>
+              <p className="text-sm text-ink-600">{y1.absenceMessage}</p>
+              <p className="text-xs text-ink-400">{RULESET.explain.absences}</p>
             </div>
           )}
         </Card>
