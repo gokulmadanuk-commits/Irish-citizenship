@@ -202,4 +202,17 @@ describe('next steps', () => {
     const a = assess(profile(), [], [], { 'std:certify': true }, APPLY)
     expect(a.nextSteps.find((s) => s.id === 'std:certify')?.done).toBe(true)
   })
+
+  it('turns a self declared rule green when its own checklist item is ticked', () => {
+    const before = assess(profile(), [], [], {}, APPLY)
+    expect(ruleState(before, 'good-character')).toBe('unknown')
+    const after = assess(profile(), [], [], { 'confirm:good-character': true }, APPLY)
+    expect(ruleState(after, 'good-character')).toBe('pass')
+  })
+
+  it('does not repeat the year by year proof rule as its own blocker', () => {
+    const a = assess(profile(), [], [], {}, APPLY)
+    expect(a.nextSteps.some((s) => s.id === 'fix:residence-evidence')).toBe(false)
+    expect(a.nextSteps.some((s) => s.id === 'proof:year1')).toBe(true)
+  })
 })

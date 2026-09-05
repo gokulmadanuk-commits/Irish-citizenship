@@ -245,7 +245,7 @@ export function assess(
 
   // Things only you can confirm.
   for (const manual of RULESET.selfDeclaredRuleIds) {
-    const ticked = !!stepOverrides[`rule:${manual}`]
+    const ticked = !!stepOverrides[`confirm:${manual}`]
     add(manual, ticked ? 'pass' : 'unknown',
       ticked ? 'You have confirmed this.' : 'Only you can confirm this. Tick it on the Next steps screen when it is true.')
   }
@@ -284,8 +284,11 @@ function buildNextSteps(
       'Add your full name, your wedding date and the date you moved to the island of Ireland. Every check needs them.', 'blocker')
   }
 
+  const coveredByYearSteps = new Set(['residence-evidence'])
   for (const r of rules) {
-    if (r.state === 'fail') push(`fix:${r.ruleId}`, r.title, r.message, 'blocker')
+    if (r.state === 'fail' && !coveredByYearSteps.has(r.ruleId)) {
+      push(`fix:${r.ruleId}`, r.title, r.message, 'blocker')
+    }
   }
 
   for (const y of years) {
@@ -303,7 +306,7 @@ function buildNextSteps(
   }
 
   for (const r of rules) {
-    if (r.state === 'unknown') push(`confirm:${r.ruleId}`, r.title, r.message, 'nice-to-have')
+    if (r.state === 'unknown') push(`confirm:${r.ruleId}`, r.title, r.message, 'important')
   }
 
   for (const s of RULESET.standingSteps) push(s.id, s.title, s.detail, s.priority)

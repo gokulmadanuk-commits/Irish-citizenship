@@ -202,8 +202,8 @@ export const RULESET: Ruleset = {
     {
       id: 'std:bank-question',
       title: 'Ask the Citizenship Division about Northern Ireland bank statements',
-      detail: 'The published rule says bank statements must come from a bank regulated in Ireland or the EU. A Northern Ireland bank is regulated in the UK. Ask them in writing before you rely on your bank statements as your strong proof.',
-      priority: 'blocker',
+      detail: 'The published rule says bank statements must come from a bank regulated in Ireland or the EU. A Northern Ireland bank is regulated in the UK. Ask them in writing before you rely on your bank statements as your strong proof. A letter from your employer is the safer strong document.',
+      priority: 'important',
     },
     {
       id: 'std:apply',

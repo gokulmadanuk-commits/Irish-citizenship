@@ -250,7 +250,7 @@ export const DOCUMENT_TYPES: DocumentType[] = [
     category: 'marriage',
     whyNeeded: 'Your Irish partner declares that the marriage is real, ongoing and that you live together. They sign it in front of an authorised witness.',
     isResidenceProof: false,
-    originalOrCopy: 'The current form only. Older versions are returned. Your partner signs on or after the day you sign.',
+    originalOrCopy: 'The current form only. Older versions are returned. Your partner must sign it on or after the day you submit the application.',
     acceptanceCriteria: [
       HAS_DATE,
       kw('declaration', 'It is signed and witnessed', ['declare', 'declaration', 'witness', 'solicitor', 'commissioner for oaths', 'notary', 'peace commissioner'], 'The witness must record how they checked your partner’s identity.'),
