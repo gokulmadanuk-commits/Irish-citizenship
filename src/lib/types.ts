@@ -1,0 +1,137 @@
+// Domain model for the Irish citizenship tracker.
+// Everything here lives in the browser only. Nothing is sent to a server.
+
+export type ISODate = string // 'YYYY-MM-DD'
+
+export interface Profile {
+  applicantFullName: string
+  dateOfBirth: ISODate | ''
+  nationality: string
+  currentAddress: string
+  movedToIslandOn: ISODate | ''
+  marriageDate: ISODate | ''
+  spouseFullName: string
+  spouseIrishCitizenshipProof: 'irish-passport' | 'naturalisation-cert' | 'foreign-birth-register' | 'birth-cert' | 'none'
+  livingTogether: boolean
+  ukImmigrationStatus: string
+  plannedApplicationDate: ISODate | ''
+}
+
+/** A trip away from the island of Ireland. Great Britain counts as away. */
+export interface Absence {
+  id: string
+  departure: ISODate
+  ret: ISODate
+  destination: string
+  reason: string
+  /** Great Britain, Republic-of-Ireland-internal travel etc. still needs a judgement call. */
+  countsAsAbsence: boolean
+}
+
+export type DocCategory =
+  | 'identity'
+  | 'marriage'
+  | 'spouse-citizenship'
+  | 'residence-proof'
+  | 'immigration-status'
+  | 'good-character'
+  | 'form'
+
+export interface DocumentType {
+  docId: string
+  name: string
+  category: DocCategory
+  whyNeeded: string
+  acceptanceCriteria: Criterion[]
+  /** Proof of residence documents each cover a slice of time. */
+  isResidenceProof: boolean
+  originalOrCopy: string
+  /** How strong this document is as proof of residence for a year. */
+  weight?: number
+}
+
+export interface Criterion {
+  id: string
+  label: string
+  /** Plain-English hint shown to the user when the check cannot be done automatically. */
+  hint: string
+  /** Regex or keyword test run against the OCR text, when an automatic test is possible. */
+  autoTest?: AutoTest
+}
+
+export type AutoTest =
+  | { kind: 'containsApplicantName' }
+  | { kind: 'containsAddress' }
+  | { kind: 'containsAnyKeyword'; keywords: string[] }
+  | { kind: 'hasDateInCoveredPeriod' }
+  | { kind: 'hasAnyDate' }
+
+export type CheckState = 'pass' | 'fail' | 'unknown'
+
+export interface CheckResult {
+  criterionId: string
+  label: string
+  state: CheckState
+  evidence: string
+}
+
+export interface StoredDocument {
+  id: string
+  docTypeId: string
+  fileName: string
+  mimeType: string
+  sizeBytes: number
+  uploadedAt: string
+  /** Period of time this document is offered as proof for. */
+  coversFrom: ISODate | ''
+  coversTo: ISODate | ''
+  ocrText: string
+  ocrState: 'pending' | 'running' | 'done' | 'skipped' | 'failed'
+  ocrConfidence: number | null
+  checks: CheckResult[]
+  userConfirmed: boolean
+  notes: string
+}
+
+export interface ResidenceYear {
+  index: number // 1 = the 12 months immediately before the application date
+  label: string
+  start: ISODate
+  end: ISODate
+  daysInWindow: number
+  daysAbsent: number
+  daysPresent: number
+  /** Only meaningful for year 1, which has the strict continuous-residence test. */
+  absenceLimit: number | null
+  absenceState: CheckState
+  proofDocumentIds: string[]
+  proofState: CheckState
+  proofMessage: string
+}
+
+export interface RuleOutcome {
+  ruleId: string
+  title: string
+  plainEnglish: string
+  legalBasis: string
+  state: CheckState
+  message: string
+  sources: string[]
+}
+
+export interface NextStep {
+  id: string
+  title: string
+  detail: string
+  priority: 'blocker' | 'important' | 'nice-to-have'
+  done: boolean
+}
+
+export interface Assessment {
+  applicationDate: ISODate
+  years: ResidenceYear[]
+  rules: RuleOutcome[]
+  nextSteps: NextStep[]
+  readinessPercent: number
+  overall: CheckState
+}
