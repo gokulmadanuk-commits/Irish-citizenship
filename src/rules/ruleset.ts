@@ -216,8 +216,8 @@ export const RULESET: Ruleset = {
     },
     {
       id: 'std:employer-letter',
-      title: 'Get a letter from your employer for each year',
-      detail: 'Three of the four strong documents are written for Irish bodies. An employer letter is the one that plainly works from Northern Ireland. Ask for it on headed paper, signed, giving the dates you worked and your home address.',
+      title: 'Line up one strong document for each year',
+      detail: 'Every year needs at least one strong (100 point) document. If you are employed, a letter from your employer on headed paper is the safest one: it is the only strong document not tied to an Irish body. If you are self-employed you cannot use it, so your strong document has to be your bank statements or your HMRC self-assessment records, and neither is confirmed for Northern Ireland. Ask the Citizenship Division which one they will take before you build your file around it.',
       priority: 'important',
     },
     {
@@ -269,6 +269,8 @@ export const RULESET: Ruleset = {
     'Trips to Great Britain, the Isle of Man and the Channel Islands count against your 70 days, even though they are inside the UK or the British Isles.',
     'Nobody records your border crossings, so your own travel log is the only evidence of your absences. Rebuild it from bookings, boarding passes and card payments.',
     'Three of the four strong (100 point) documents are written for Irish bodies: Revenue, the Department of Social Protection, and banks regulated in Ireland or the EU. A letter from your employer is the one that clearly works from Northern Ireland.',
+    'If you are self-employed you cannot get an employer letter, so the one safe strong document is closed to you. That leaves bank statements and HMRC tax records, and the Department has confirmed neither for Northern Ireland. Ask them in writing before you build your file.',
+    'A driving licence is not on the residence list at all. It is worth 10 points on the identity list, and a valid passport already gives you all 150 there, so it adds nothing.',
     'The Department nowhere names a single Northern Ireland utility, water, rates, health or housing body. Every mapping in this app is a sensible guess, not published guidance.',
     'Any gap in your UK permission may break the chain of lawful residence.',
     'If the Department asks you for a document, you have 28 days. Miss it and the application is refused, you lose the 175 euro, and you start again. The request may arrive as a message in the portal, not as an email you will notice.',
@@ -288,6 +290,7 @@ export const RULESET: Ruleset = {
     'Whether Northern Ireland bank statements count as a strong (100 point) document. One line on the proofs page expects card payments on the island of Ireland, which fits Northern Ireland. The next line requires a bank regulated in Ireland or the EU, which does not.',
     'Whether an HMRC P60 counts as a strong document for you. The Department mentions P60s, but inside a section written for citizens of the EEA, Switzerland and the UK. You are none of those.',
     'Which Northern Ireland documents count as supporting (50 point) proofs. The Department publishes no Northern Ireland list at all.',
+    'Whether an HMRC self-assessment tax calculation counts as a strong (100 point) document. The list says "Employment Detail Summary (P60) or Revenue Statement", which is the Irish tax office. A self-assessment record is the same kind of thing, but the Department never names HMRC.',
     'Which police certificate the Department accepts from a Northern Ireland resident. It asks for a police clearance certificate, and a parliamentary answer says a PSNI report, but the PSNI does not issue clearance certificates for this purpose.',
     'Whether the 70 day absence allowance applies only to the final unbroken year, or also to the earlier years. The wording of the law points to the final year only, but the old paper form asks about all five.',
     'Whether a gap between UK grants of permission, including the automatic cover while a UK application is pending, breaks your reckonable residence. The Department has published nothing on this.',
