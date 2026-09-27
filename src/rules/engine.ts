@@ -1,6 +1,8 @@
 // The rules engine. Pure logic: give it your details and it tells you where you stand.
 // Every legal number it uses comes from ruleset.ts, so the law and the code stay apart.
-import { addYears, daysBetween, absenceDaysInWindow, formatLong, isAfter, isBefore, overlapDays } from '../lib/dates'
+import {
+  addYears, daysBetween, absenceDaysInWindow, formatLong, isAfter, isBefore, documentOverlapDays,
+} from '../lib/dates'
 import type {
   Absence, Assessment, CheckState, NextStep, Profile, ResidenceYear, RuleOutcome,
   SectionStatus, StoredDocument,
@@ -8,6 +10,7 @@ import type {
 import { RULESET } from './ruleset'
 import { DOCUMENT_TYPES, docTypeById } from './documents'
 import { DOCUMENT_SECTIONS, sectionIdForDocType, sectionIdForRule } from './sections'
+import { sharedHomeStatus } from './sharedHome'
 
 /** Worst first: missing or wrong, then unsure, then only needing a certifier, then done. */
 const worst = (states: CheckState[]): CheckState =>
@@ -150,7 +153,7 @@ export function assignYear(doc: StoredDocument, years: ResidenceYear[]): number 
   if (!doc.coversFrom || !doc.coversTo) return null
   let best: { index: number; days: number; required: boolean } | null = null
   for (const y of years) {
-    const days = overlapDays(doc.coversFrom, doc.coversTo, y.start, y.end)
+    const days = documentOverlapDays(doc.coversFrom, doc.coversTo, y.start, y.end)
     if (days <= 0) continue
     const better = !best
       || (y.evidenceRequired && !best.required)
@@ -287,13 +290,8 @@ export function assess(
     proofYears.map((y) => `Year ${y.index}: ${y.points}/${y.pointsRequired} points.`).join(' '))
 
   // Proof you live at the same address right now.
-  const shared = docs.filter((d) => d.docTypeId === RULESET.sharedAddressDocId && isDocumentAccepted(d))
-  const sharedProofs = shared.length
-  const needShared = RULESET.sharedAddressProofsPerPerson * 2
-  const sharedUncertified = shared.filter(needsCertifying).length
-  add('shared-address', withCertification(sharedProofs >= needShared ? 'pass' : 'fail', sharedUncertified),
-    `${sharedProofs} of ${needShared} shared address proofs uploaded. You need ${RULESET.sharedAddressProofsPerPerson} each for you and your partner, covering the ${RULESET.sharedAddressMonths} months before you apply.`
-    + (sharedUncertified ? ` ${sharedUncertified} still need${sharedUncertified === 1 ? 's' : ''} certifying.` : ''))
+  const shared = sharedHomeStatus(docs, profile, applicationDate, isDocumentAccepted, needsCertifying)
+  add('shared-address', shared.state, shared.message)
 
   // Core paperwork.
   const missingCore = RULESET.coreDocumentIds.filter(
@@ -315,7 +313,7 @@ export function assess(
       ticked ? 'You have confirmed this.' : 'Only you can confirm this. Tick it on the Next steps screen when it is true.')
   }
 
-  const sections = buildSections(docs, years)
+  const sections = buildSections(docs, years, shared)
   const nextSteps = buildNextSteps(profile, docs, years, rules, sections, stepOverrides)
   const weight: Record<CheckState, number> = { pass: 1, uncertified: 0.75, unknown: 0.5, fail: 0 }
   const points = rules.reduce((s, r) => s + weight[r.state], 0)
@@ -325,7 +323,11 @@ export function assess(
 }
 
 /** Works out where each Documents screen section stands. */
-export function buildSections(docs: StoredDocument[], years: ResidenceYear[]): SectionStatus[] {
+export function buildSections(
+  docs: StoredDocument[],
+  years: ResidenceYear[],
+  shared: ReturnType<typeof sharedHomeStatus>,
+): SectionStatus[] {
   return DOCUMENT_SECTIONS.map((section) => {
     const own = docs.filter((d) => section.docTypeIds.includes(d.docTypeId)
       || (section.optionalDocTypeIds ?? []).includes(d.docTypeId))
@@ -354,6 +356,18 @@ export function buildSections(docs: StoredDocument[], years: ResidenceYear[]): S
         uncertifiedDocumentIds: uncertifiedDocs.map((d) => d.id),
         uploaded: done,
         required: needed.length,
+      }
+    }
+
+    if (section.kind === 'shared-home') {
+      return {
+        ...base,
+        state: shared.state,
+        message: shared.message,
+        missingDocTypeIds: [],
+        uncertifiedDocumentIds: shared.uncertifiedIds,
+        uploaded: Math.min(shared.me.kinds.length, shared.me.needed) + Math.min(shared.partner.kinds.length, shared.partner.needed),
+        required: shared.me.needed + shared.partner.needed,
       }
     }
 

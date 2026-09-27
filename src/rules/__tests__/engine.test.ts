@@ -45,6 +45,19 @@ const doc = (docTypeId: string, coversFrom: string, coversTo: string): StoredDoc
 
 const certified = (d: StoredDocument): StoredDocument => ({ ...d, certified: true })
 
+let sharedCount = 0
+const shared = (
+  proofKind: NonNullable<StoredDocument['proofKind']>,
+  holder: NonNullable<StoredDocument['holder']>,
+  coversFrom: string,
+  coversTo: string,
+): StoredDocument => ({
+  ...doc('shared-address-proof', coversFrom, coversTo),
+  id: `shared-${proofKind}-${holder}-${coversFrom}-${sharedCount++}`,
+  holder,
+  proofKind,
+})
+
 const ruleState = (a: ReturnType<typeof assess>, id: string) => a.rules.find((r) => r.ruleId === id)?.state
 
 describe('residence windows', () => {
@@ -231,13 +244,15 @@ describe('sections line up with next steps', () => {
     expect(a.sections.find((s) => s.id === 'spouse-citizenship')?.state).toBe('pass')
   })
 
-  it('counts the six shared address proofs', () => {
-    const six = Array.from({ length: 6 }, (_, i) => ({
-      ...certified(doc('shared-address-proof', '', '')), id: `shared-${i}`,
-    }))
-    const partial = assess(profile(), six.slice(0, 4), [], {}, APPLY)
+  it('needs three different kinds each for the shared home section', () => {
+    const three = [
+      shared('bank-statement', 'both', '2026-07-01', '2026-07-31'),
+      shared('utility-bill', 'both', '2026-07-01', '2026-07-31'),
+      shared('employer-letter', 'me', '2026-08-01', '2026-08-01'),
+    ].map(certified)
+    const partial = assess(profile(), three, [], {}, APPLY)
     expect(partial.sections.find((s) => s.id === 'shared-home')?.state).toBe('fail')
-    const full = assess(profile(), six, [], {}, APPLY)
+    const full = assess(profile(), [...three, certified(shared('employer-letter', 'partner', '2026-08-01', '2026-08-01'))], [], {}, APPLY)
     expect(full.sections.find((s) => s.id === 'shared-home')?.state).toBe('pass')
   })
 
@@ -371,13 +386,95 @@ describe('right document, not certified yet', () => {
   })
 
   it('ranks Not certified above Not met but below a full pass in readiness', () => {
-    const six = (c: boolean) => Array.from({ length: 6 }, (_, i) => ({
-      ...doc('shared-address-proof', '', ''), id: `s${i}`, certified: c,
-    }))
+    const six = (c: boolean) => [
+      shared('bank-statement', 'both', '2026-07-01', '2026-07-31'),
+      shared('utility-bill', 'both', '2026-07-01', '2026-07-31'),
+      shared('phone-or-broadband', 'both', '2026-08-01', '2026-08-31'),
+    ].map((d) => ({ ...d, certified: c }))
     const none = assess(profile(), [], [], {}, APPLY).readinessPercent
     const waiting = assess(profile(), six(false), [], {}, APPLY).readinessPercent
     const done = assess(profile(), six(true), [], {}, APPLY).readinessPercent
     expect(waiting).toBeGreaterThan(none)
     expect(done).toBeGreaterThan(waiting)
+  })
+})
+
+describe('proof you share a home', () => {
+  // Applying 5 Sep 2026, so the window is 5 Jun 2026 to 5 Sep 2026.
+  const sh = (a: ReturnType<typeof assess>) => a.sections.find((s) => s.id === 'shared-home')!
+
+  it('counts three statements from one joint account as one kind for each of you', () => {
+    const docs = ['2026-06-10', '2026-07-10', '2026-08-10'].map((d) => certified(shared('bank-statement', 'both', d, d)))
+    const s = sh(assess(profile(), docs, [], {}, APPLY))
+    expect(s.state).toBe('fail')
+    expect(s.message).toContain('You: 1 of 3')
+    expect(s.message).toContain('Sean: 1 of 3')
+  })
+
+  it('does not accept three personal bank statements each either', () => {
+    const docs = [
+      ...['2026-06-10', '2026-07-10', '2026-08-10'].map((d) => certified(shared('bank-statement', 'me', d, d))),
+      ...['2026-06-10', '2026-07-10', '2026-08-10'].map((d) => certified(shared('bank-statement', 'partner', d, d))),
+    ]
+    expect(sh(assess(profile(), docs, [], {}, APPLY)).state).toBe('fail')
+  })
+
+  it('passes with a joint bank statement, a joint bill and one letter each', () => {
+    const docs = [
+      shared('bank-statement', 'both', '2026-07-01', '2026-07-31'),
+      shared('utility-bill', 'both', '2026-07-01', '2026-07-31'),
+      shared('employer-letter', 'me', '2026-08-01', '2026-08-01'),
+      shared('gp-or-hospital-letter', 'partner', '2026-08-01', '2026-08-01'),
+    ].map(certified)
+    expect(sh(assess(profile(), docs, [], {}, APPLY)).state).toBe('pass')
+  })
+
+  it('ignores documents from before the three months', () => {
+    const docs = [
+      shared('bank-statement', 'both', '2026-07-01', '2026-07-31'),
+      shared('utility-bill', 'both', '2026-01-01', '2026-01-31'),
+      shared('phone-or-broadband', 'both', '2026-08-01', '2026-08-31'),
+    ].map(certified)
+    const s = sh(assess(profile(), docs, [], {}, APPLY))
+    expect(s.state).toBe('fail')
+    expect(s.message).toContain('outside the 3 months')
+  })
+
+  it('says it cannot tell when a document has no owner or kind yet', () => {
+    const blank = certified({ ...doc('shared-address-proof', '2026-07-01', '2026-07-31') })
+    const s = sh(assess(profile(), [blank], [], {}, APPLY))
+    expect(s.state).toBe('unknown')
+    expect(s.message).toContain('whose name is on it')
+  })
+
+  it('shows Not certified when the right documents are there but not certified', () => {
+    const docs = [
+      shared('bank-statement', 'both', '2026-07-01', '2026-07-31'),
+      shared('utility-bill', 'both', '2026-07-01', '2026-07-31'),
+      shared('tenancy-or-mortgage', 'both', '2026-06-01', '2026-09-01'),
+    ]
+    const s = sh(assess(profile(), docs, [], {}, APPLY))
+    expect(s.state).toBe('uncertified')
+    expect(s.uncertifiedDocumentIds).toHaveLength(3)
+  })
+
+  it('moves the three month window when the application date moves', () => {
+    const docs = [
+      shared('bank-statement', 'both', '2026-07-01', '2026-07-31'),
+      shared('utility-bill', 'both', '2026-07-01', '2026-07-31'),
+      shared('tenancy-or-mortgage', 'both', '2026-07-01', '2026-07-31'),
+    ].map(certified)
+    expect(sh(assess(profile(), docs, [], {}, APPLY)).state).toBe('pass')
+    const later = profile({ plannedApplicationDate: '2027-03-01' })
+    expect(sh(assess(later, docs, [], {}, '2027-03-01')).state).toBe('fail')
+  })
+})
+
+describe('documents dated a single day', () => {
+  it('count for the residence year they fall in', () => {
+    const letter = certified(doc('employer-letter', '2026-03-01', '2026-03-01'))
+    const a = assess(profile(), [letter], [], {}, APPLY)
+    expect(a.years[0].proofDocumentIds).toContain(letter.id)
+    expect(a.years[0].points).toBe(100)
   })
 })

@@ -323,6 +323,21 @@ const RAW_DOCUMENT_TYPES: RawDocumentType[] = [
   {
     docId: 'police-certificate',
     name: 'ACRO police certificate (for your time in the UK)',
+    howToGet: {
+      summary: 'You apply online. You do not go to a police station.',
+      steps: [
+        'Go to acro.police.uk and choose Police Certificates, then apply online.',
+        'Have your passport ready. You upload a colour copy of the photo page, showing your photo, details, expiry date and signature.',
+        'Upload one proof of your current address that shows your name, such as a recent bank statement or utility bill. Envelopes and handwritten papers are not accepted.',
+        'Give your address history when the form asks for it.',
+        'Pay the fee.',
+        'ACRO posts the certificate to you. Upload a scan of it here. It does not need certifying.',
+      ],
+      link: { label: 'Apply at acro.police.uk', url: 'https://www.acro.police.uk/s/acro-services/police-certificates' },
+      cost: '55 pounds for the standard service',
+      time: 'ACRO says up to 30 working days, so apply at least six weeks before you want to submit.',
+      checkedOn: '27 September 2026',
+    },
     category: 'good-character',
     whyNeeded: 'Garda vetting only covers the Republic. The Department says people living outside the State must give a police clearance certificate from the police where they live. For Northern Ireland that means an ACRO police certificate. You apply online, not at a police station.',
     isResidenceProof: false,
@@ -351,10 +366,10 @@ const RAW_DOCUMENT_TYPES: RawDocumentType[] = [
     docId: 'shared-address-proof',
     name: 'Proof you and your partner share an address',
     category: 'marriage',
-    whyNeeded: 'You need three different documents each, six in total, covering the three months just before you apply.',
+    whyNeeded: 'Each of you needs three different kinds of document at your shared address, from the three months just before you apply. Three statements from the same bank account count as one kind, not three. A joint document with both names counts for both of you.',
     isResidenceProof: false,
-    originalOrCopy: 'Certified copies. Utility bills, bank statements, rent or mortgage papers, or letters from an employer.',
-    acceptanceCriteria: [ADDRESS, HAS_DATE],
+    originalOrCopy: 'Certified copies. The Department gives these examples: utility bills (gas, electricity, phone, TV), bank statements, rent or mortgage agreements, and letters from an employer or social welfare.',
+    acceptanceCriteria: [ADDRESS, DATED_IN_PERIOD],
   },
 
   // ---------- UK status ----------

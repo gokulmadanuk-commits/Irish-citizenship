@@ -45,6 +45,8 @@ export interface DocumentType {
   acceptanceCriteria: Criterion[]
   /** Proof of residence documents each cover a slice of time. */
   isResidenceProof: boolean
+  /** How to get this document, for the ones you have to apply for. */
+  howToGet?: HowToGet
   /** True when the Department wants a certified copy of this document, not the file as it is. */
   needsCertification: boolean
   originalOrCopy: string
@@ -52,6 +54,15 @@ export interface DocumentType {
   points?: number
   /** Notes shown under the document type in the app. */
   niNote?: string
+}
+
+export interface HowToGet {
+  summary: string
+  steps: string[]
+  link: { label: string; url: string }
+  cost: string
+  time: string
+  checkedOn: string
 }
 
 export interface Criterion {
@@ -84,6 +95,13 @@ export interface CheckResult {
   evidence: string
 }
 
+export type Holder = 'me' | 'partner' | 'both'
+
+export type SharedProofKind =
+  | 'bank-statement' | 'credit-card-statement' | 'utility-bill' | 'phone-or-broadband'
+  | 'tv-licence' | 'tenancy-or-mortgage' | 'rates-bill' | 'employer-letter'
+  | 'hmrc-or-benefits-letter' | 'gp-or-hospital-letter' | 'other'
+
 export interface StoredDocument {
   id: string
   docTypeId: string
@@ -101,6 +119,10 @@ export interface StoredDocument {
   userConfirmed: boolean
   /** The user has had this copy certified by a solicitor, commissioner for oaths, notary or peace commissioner. */
   certified?: boolean
+  /** For proof of a shared home: whose name is on it. */
+  holder?: Holder
+  /** For proof of a shared home: what kind of document it is. Each person needs three different kinds. */
+  proofKind?: SharedProofKind
   notes: string
 }
 
@@ -163,7 +185,7 @@ export interface DocumentSection {
   title: string
   why: string
   /** 'per-year' scores 150 points a year. 'count' needs a number of files. 'each-required' needs one of each type. */
-  kind: 'per-year' | 'count' | 'each-required'
+  kind: 'per-year' | 'count' | 'each-required' | 'shared-home'
   required?: number
   docTypeIds: string[]
   optionalDocTypeIds?: string[]

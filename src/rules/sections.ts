@@ -19,9 +19,8 @@ export const DOCUMENT_SECTIONS: DocumentSection[] = [
   {
     id: 'shared-home',
     title: 'Proof you and your partner share a home',
-    why: 'Three documents each, six in total, covering the three months just before you apply.',
-    kind: 'count',
-    required: 6,
+    why: 'Three different kinds of document for you, and three for your partner, all at the same address and all from the three months just before you apply. A joint document with both names counts for both of you.',
+    kind: 'shared-home',
     docTypeIds: ['shared-address-proof'],
     ruleIds: ['shared-address'],
   },

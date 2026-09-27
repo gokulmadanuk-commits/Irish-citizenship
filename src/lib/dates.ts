@@ -15,6 +15,15 @@ export function addDays(iso: string, days: number): string {
   return toISO(new Date(toDate(iso).getTime() + days * DAY_MS))
 }
 
+/** Moves a date by whole months. 31 May minus 3 months is 28 or 29 February, not 3 March. */
+export function addMonths(iso: string, months: number): string {
+  const d = toDate(iso)
+  const target = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + months, 1))
+  const lastDay = new Date(Date.UTC(target.getUTCFullYear(), target.getUTCMonth() + 1, 0)).getUTCDate()
+  target.setUTCDate(Math.min(d.getUTCDate(), lastDay))
+  return toISO(target)
+}
+
 export function addYears(iso: string, years: number): string {
   const d = toDate(iso)
   const out = new Date(Date.UTC(d.getUTCFullYear() + years, d.getUTCMonth(), d.getUTCDate()))
@@ -66,4 +75,12 @@ export function overlapDays(aStart: string, aEnd: string, bStart: string, bEnd: 
   const start = Math.max(toDate(aStart).getTime(), toDate(bStart).getTime())
   const end = Math.min(toDate(aEnd).getTime(), toDate(bEnd).getTime())
   return end <= start ? 0 : Math.round((end - start) / DAY_MS)
+}
+
+/**
+ * Days a document's period shares with a window. A document's "covers to" date is
+ * the last day it covers, so it is counted in. A letter dated 1 August covers one day.
+ */
+export function documentOverlapDays(coversFrom: string, coversTo: string, windowStart: string, windowEnd: string): number {
+  return overlapDays(coversFrom, addDays(coversTo, 1), windowStart, windowEnd)
 }

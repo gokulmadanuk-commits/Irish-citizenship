@@ -31,3 +31,19 @@ describe('date maths', () => {
     expect(overlapDays('2026-01-01', '2026-02-01', '2026-03-01', '2026-04-01')).toBe(0)
   })
 })
+
+import { documentOverlapDays } from '../dates'
+
+describe('document periods', () => {
+  it('counts a letter dated one day as covering that day', () => {
+    expect(documentOverlapDays('2026-08-01', '2026-08-01', '2026-06-05', '2026-09-05')).toBe(1)
+  })
+
+  it('counts the last day a statement covers', () => {
+    expect(documentOverlapDays('2026-07-01', '2026-07-31', '2026-07-01', '2026-08-01')).toBe(31)
+  })
+
+  it('still ignores a document entirely outside the window', () => {
+    expect(documentOverlapDays('2026-01-01', '2026-01-31', '2026-06-05', '2026-09-05')).toBe(0)
+  })
+})

@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
-import type { Assessment, DocumentSection, Profile, SectionStatus, StoredDocument } from '../lib/types'
+import type {
+  Assessment, DocumentSection, DocumentType, Holder, Profile, SectionStatus, SharedProofKind, StoredDocument,
+} from '../lib/types'
 import { Button, Card, Empty, Field, StatePill, inputClass } from './ui'
 import { DOCUMENT_TYPES, docTypeById } from '../rules/documents'
 import { DOCUMENT_SECTIONS } from '../rules/sections'
@@ -8,6 +10,8 @@ import { extractText } from '../lib/extract'
 import { saveFile, loadFile } from '../lib/storage'
 import { formatLong, toISO } from '../lib/dates'
 import { buildPrintablePdf, buildZip, saveBlob } from '../lib/exportPack'
+import { SHARED_PROOF_KINDS, holderLabel, kindLabel, partnerFirstName, sharedHomeStatus } from '../rules/sharedHome'
+import { isDocumentAccepted, needsCertifying } from '../rules/engine'
 import {
   FORMS_CHECKED_ON, NO_PUBLISHED_FORM, fallbackCovered, formForDocType, formsForSection, type OfficialForm,
 } from '../rules/forms'
@@ -194,6 +198,15 @@ function SectionCard({
         <div className="border-t border-ink-100 px-5 py-4">
           {section.kind === 'per-year' && <YearBreakdown assessment={assessment} />}
           <SectionForms sectionId={section.id} assessment={assessment} documents={documents} />
+          {section.kind === 'shared-home' && (
+            <SharedHomeBreakdown profile={profile} documents={documents} assessment={assessment} />
+          )}
+          {types.filter((t) => t.howToGet).map((t) => (
+            <div key={t.docId} className="mb-4">
+              <p className="text-sm font-semibold text-ink-900">{t.name}</p>
+              <HowToGetBox type={t} />
+            </div>
+          ))}
 
           {status.uncertifiedDocumentIds.length > 0 && (
             <div className="mb-4 rounded-xl bg-yellow-50 p-4 ring-1 ring-yellow-300">
@@ -326,6 +339,114 @@ function FormList({ forms, open, setOpen }: {
   )
 }
 
+function HolderSelect({ value, profile, onChange }: {
+  value: Holder | ''
+  profile: Profile
+  onChange: (v: Holder | '') => void
+}) {
+  return (
+    <select className={inputClass} value={value} onChange={(e) => onChange(e.target.value as Holder | '')}>
+      <option value="">Choose…</option>
+      <option value="both">Both of us (a joint document)</option>
+      <option value="me">Only me</option>
+      <option value="partner">Only {partnerFirstName(profile)}</option>
+    </select>
+  )
+}
+
+function KindSelect({ value, onChange }: {
+  value: SharedProofKind | ''
+  onChange: (v: SharedProofKind | '') => void
+}) {
+  return (
+    <select className={inputClass} value={value} onChange={(e) => onChange(e.target.value as SharedProofKind | '')}>
+      <option value="">Choose…</option>
+      {SHARED_PROOF_KINDS.map((k) => <option key={k.id} value={k.id}>{k.label}</option>)}
+    </select>
+  )
+}
+
+function SharedHomeBreakdown({ profile, documents, assessment }: {
+  profile: Profile
+  documents: StoredDocument[]
+  assessment: Assessment
+}) {
+  const st = sharedHomeStatus(documents, profile, assessment.applicationDate, isDocumentAccepted, needsCertifying)
+  const partner = partnerFirstName(profile)
+  const person = (who: string, c: typeof st.me) => {
+    const missing = Math.max(0, c.needed - c.kinds.length)
+    return (
+      <div className={`rounded-xl p-3 ring-1 ${c.met ? 'bg-shamrock-50 ring-shamrock-200' : 'bg-white ring-ink-200'}`}>
+        <p className="text-sm font-semibold text-ink-900">{who}: {Math.min(c.kinds.length, c.needed)} of {c.needed}</p>
+        <ul className="mt-1 grid gap-0.5">
+          {c.kinds.map((k, i) => <li key={`${k}-${i}`} className="text-xs text-shamrock-800">✓ {kindLabel(k)}</li>)}
+          {Array.from({ length: missing }, (_, i) => (
+            <li key={`gap-${i}`} className="text-xs text-ink-400">○ One more different kind</li>
+          ))}
+        </ul>
+      </div>
+    )
+  }
+  const usedByBoth = new Set([...st.me.kinds, ...st.partner.kinds])
+  const ideas = SHARED_PROOF_KINDS.filter((k) => k.id !== 'other' && !usedByBoth.has(k.id)).slice(0, 5)
+  return (
+    <div className="mb-4 rounded-xl bg-ink-50 p-4 ring-1 ring-ink-200">
+      <p className="text-sm font-semibold text-ink-900">
+        Documents dated {formatLong(st.windowStart)} to {formatLong(st.windowEnd)}
+      </p>
+      <p className="mt-0.5 text-xs text-ink-600">
+        That is the three months before your planned application date. Change the date on Your details and this moves with it.
+        Three statements from one account count as one kind.
+      </p>
+      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+        {person('You', st.me)}
+        {person(partner, st.partner)}
+      </div>
+      {(!st.me.met || !st.partner.met) && ideas.length > 0 && (
+        <p className="mt-3 text-xs text-ink-700">
+          Kinds you have not used yet: {ideas.map((k) => k.label.toLowerCase()).join(', ')}.
+          A joint bill or a joint tenancy agreement fills a gap for both of you at once.
+        </p>
+      )}
+      {st.incompleteIds.length > 0 && (
+        <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900 ring-1 ring-amber-200">
+          {st.incompleteIds.length} document{st.incompleteIds.length === 1 ? ' is' : 's are'} not counted yet.
+          Open {st.incompleteIds.length === 1 ? 'it' : 'each one'} below and set whose name is on it, what kind it is, and its dates.
+        </p>
+      )}
+      {st.outOfWindowIds.length > 0 && (
+        <p className="mt-3 rounded-lg bg-rose-50 px-3 py-2 text-xs text-rose-900 ring-1 ring-rose-200">
+          {st.outOfWindowIds.length} document{st.outOfWindowIds.length === 1 ? ' is' : 's are'} dated outside these three months, so {st.outOfWindowIds.length === 1 ? 'it does' : 'they do'} not count. Get newer ones closer to the day you apply.
+        </p>
+      )}
+    </div>
+  )
+}
+
+function HowToGetBox({ type }: { type: DocumentType }) {
+  const h = type.howToGet!
+  return (
+    <div className="mt-3 rounded-lg bg-shamrock-50 p-3 ring-1 ring-shamrock-200">
+      <p className="text-sm font-semibold text-shamrock-900">How to get it</p>
+      <p className="mt-0.5 text-xs text-shamrock-900">{h.summary}</p>
+      <ol className="mt-2 grid list-decimal gap-1 pl-5">
+        {h.steps.map((step, i) => <li key={i} className="text-xs text-ink-800">{step}</li>)}
+      </ol>
+      <dl className="mt-2 grid gap-1 text-xs sm:grid-cols-2">
+        <div><dt className="inline font-semibold text-ink-900">Cost: </dt><dd className="inline text-ink-800">{h.cost}</dd></div>
+        <div><dt className="inline font-semibold text-ink-900">Time: </dt><dd className="inline text-ink-800">{h.time}</dd></div>
+      </dl>
+      <div className="mt-2 flex flex-wrap items-center gap-3">
+        <a href={h.link.url} target="_blank" rel="noreferrer"
+          className="inline-flex items-center rounded-lg bg-shamrock-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-shamrock-700">
+          {h.link.label}
+        </a>
+        <span className="text-xs text-ink-400">Checked {h.checkedOn}</span>
+      </div>
+    </div>
+  )
+}
+
 function YearBreakdown({ assessment }: { assessment: Assessment }) {
   return (
     <div className="mb-4 grid gap-3 sm:grid-cols-3">
@@ -363,8 +484,13 @@ function Uploader({ section, types, profile, onUpsert }: {
   const [coversTo, setCoversTo] = useState('')
   const [busy, setBusy] = useState<{ name: string; pct: number; label: string } | null>(null)
 
+  const [holder, setHolder] = useState<Holder | ''>('')
+  const [proofKind, setProofKind] = useState<SharedProofKind | ''>('')
+
   const selectedType = docTypeById(docTypeId)
-  const needsDates = section.kind === 'per-year'
+  const isShared = section.kind === 'shared-home'
+  const needsDates = section.kind === 'per-year' || isShared
+  const missingSharedInfo = isShared && (!holder || !proofKind)
 
   const handleFiles = async (files: FileList | null) => {
     if (!files?.length) return
@@ -386,6 +512,7 @@ function Uploader({ section, types, profile, onUpsert }: {
         checks: [],
         userConfirmed: false,
         notes: '',
+        ...(isShared ? { holder: holder || undefined, proofKind: proofKind || undefined } : {}),
       }
       onUpsert(doc)
       setBusy({ name: file.name, pct: 5, label: 'Opening the file' })
@@ -412,10 +539,10 @@ function Uploader({ section, types, profile, onUpsert }: {
         </Field>
         {needsDates && (
           <>
-            <Field label="Covers from" hint="First date this proves">
+            <Field label="Covers from" hint={isShared ? 'Start of the statement or bill' : 'First date this proves'}>
               <input type="date" className={inputClass} value={coversFrom} onChange={(e) => setCoversFrom(e.target.value)} />
             </Field>
-            <Field label="Covers to" hint="Last date this proves">
+            <Field label="Covers to" hint={isShared ? 'End of the statement or bill' : 'Last date this proves'}>
               <input type="date" className={inputClass} value={coversTo} onChange={(e) => setCoversTo(e.target.value)} />
             </Field>
           </>
@@ -425,9 +552,23 @@ function Uploader({ section, types, profile, onUpsert }: {
             ref={fileRef} type="file" multiple accept="image/*,application/pdf" className="hidden"
             onChange={(e) => void handleFiles(e.target.files)}
           />
-          <Button onClick={() => fileRef.current?.click()} disabled={!docTypeId}>Choose files</Button>
+          <Button onClick={() => fileRef.current?.click()} disabled={!docTypeId || missingSharedInfo}>Choose files</Button>
         </div>
       </div>
+
+      {isShared && (
+        <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          <Field label="Whose name is on it?" hint="A document with both names counts for both of you.">
+            <HolderSelect value={holder} profile={profile} onChange={setHolder} />
+          </Field>
+          <Field label="What kind of document is it?" hint="Each of you needs three different kinds.">
+            <KindSelect value={proofKind} onChange={setProofKind} />
+          </Field>
+        </div>
+      )}
+      {missingSharedInfo && (
+        <p className="mt-2 text-xs text-ink-600">Choose whose name is on it and what kind it is, then choose the file.</p>
+      )}
 
       {selectedType && (
         <div className="mt-4 rounded-lg bg-white p-4 ring-1 ring-ink-200">
@@ -552,6 +693,19 @@ function DocumentRow({ doc, profile, onUpsert, onRemove }: {
                 </span>
               </span>
             </label>
+          )}
+
+          {doc.docTypeId === 'shared-address-proof' && (
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              <Field label="Whose name is on it?">
+                <HolderSelect value={doc.holder ?? ''} profile={profile}
+                  onChange={(v) => onUpsert({ ...doc, holder: v || undefined })} />
+              </Field>
+              <Field label="What kind of document is it?">
+                <KindSelect value={doc.proofKind ?? ''}
+                  onChange={(v) => onUpsert({ ...doc, proofKind: v || undefined })} />
+              </Field>
+            </div>
           )}
 
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
