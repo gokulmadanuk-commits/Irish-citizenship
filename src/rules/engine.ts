@@ -9,13 +9,37 @@ import { RULESET } from './ruleset'
 import { DOCUMENT_TYPES, docTypeById } from './documents'
 import { DOCUMENT_SECTIONS, sectionIdForDocType, sectionIdForRule } from './sections'
 
+/** Worst first: missing or wrong, then unsure, then only needing a certifier, then done. */
 const worst = (states: CheckState[]): CheckState =>
-  states.includes('fail') ? 'fail' : states.includes('unknown') ? 'unknown' : 'pass'
+  states.includes('fail') ? 'fail'
+    : states.includes('unknown') ? 'unknown'
+      : states.includes('uncertified') ? 'uncertified'
+        : 'pass'
 
-/** A document counts once every check passes, or the user has confirmed it by hand. */
+/**
+ * A document is the right one once every check passes, or the user has confirmed
+ * it by hand. Certification is tracked separately: see needsCertifying.
+ */
 export function isDocumentAccepted(doc: StoredDocument): boolean {
   if (doc.userConfirmed) return !doc.checks.some((c) => c.state === 'fail')
   return doc.checks.length > 0 && doc.checks.every((c) => c.state === 'pass')
+}
+
+/** True when this is a copy the Department wants certified, and it has not been yet. */
+export function needsCertifying(doc: StoredDocument): boolean {
+  return !!docTypeById(doc.docTypeId)?.needsCertification && !doc.certified
+}
+
+/** Adds "and N still need certifying" to a state, once the documents themselves are right. */
+function withCertification(state: CheckState, uncertified: number): CheckState {
+  return state === 'pass' && uncertified > 0 ? 'uncertified' : state
+}
+
+function certifyNote(names: string[]): string {
+  if (names.length === 0) return ''
+  return names.length === 1
+    ? ` 1 still needs certifying: ${names[0]}.`
+    : ` ${names.length} still need certifying: ${names.join(', ')}.`
 }
 
 export function buildYears(
@@ -89,6 +113,7 @@ export function buildYears(
       absenceState,
       absenceMessage,
       proofDocumentIds: [],
+      uncertifiedCount: 0,
       points: 0,
       pointsRequired: RULESET.pointsRequiredPerYear,
       hasStrongProof: false,
@@ -105,12 +130,13 @@ export function buildYears(
     const y = years[index - 1]
     const pts = docTypeById(d.docTypeId)?.points ?? 0
     y.proofDocumentIds.push(d.id)
+    if (needsCertifying(d)) y.uncertifiedCount++
     y.points += pts
     if (pts >= RULESET.strongProofPoints) y.hasStrongProof = true
   }
 
   for (const y of years) {
-    Object.assign(y, judgeProof(y.evidenceRequired, y.points, y.hasStrongProof, y.proofDocumentIds.length))
+    Object.assign(y, judgeProof(y.evidenceRequired, y.points, y.hasStrongProof, y.proofDocumentIds.length, y.uncertifiedCount))
   }
   return years
 }
@@ -151,7 +177,7 @@ function markYearsNeedingEvidence(years: ResidenceYear[]) {
   }
 }
 
-function judgeProof(required: boolean, points: number, hasStrong: boolean, count: number) {
+function judgeProof(required: boolean, points: number, hasStrong: boolean, count: number, uncertified = 0) {
   const need = RULESET.pointsRequiredPerYear
   if (!required) {
     return { proofState: 'pass' as CheckState, proofMessage: 'You do not rely on this year, so no proof is needed for it.' }
@@ -159,11 +185,21 @@ function judgeProof(required: boolean, points: number, hasStrong: boolean, count
   if (count === 0) {
     return { proofState: 'fail' as CheckState, proofMessage: `0 of ${need} points. You need one strong proof and one supporting proof.` }
   }
+  const certify = uncertified === 0 ? ''
+    : count === 1 ? ' It still needs certifying.'
+      : uncertified === count ? ` All ${count} still need certifying.`
+        : ` ${uncertified} of these still need${uncertified === 1 ? 's' : ''} certifying.`
   if (points < need) {
-    return { proofState: 'fail' as CheckState, proofMessage: `${points} of ${need} points from ${count} accepted document${count > 1 ? 's' : ''}.` }
+    return { proofState: 'fail' as CheckState, proofMessage: `${points} of ${need} points from ${count} accepted document${count > 1 ? 's' : ''}.${certify}` }
   }
   if (!hasStrong) {
     return { proofState: 'unknown' as CheckState, proofMessage: `${points} points, but none of them is a strong proof. You must include at least one strong document.` }
+  }
+  if (uncertified > 0) {
+    return {
+      proofState: 'uncertified' as CheckState,
+      proofMessage: `${points} of ${need} points, including a strong proof. You have the right documents.${certify}`,
+    }
   }
   return { proofState: 'pass' as CheckState, proofMessage: `${points} of ${need} points, including a strong proof.` }
 }
@@ -251,19 +287,26 @@ export function assess(
     proofYears.map((y) => `Year ${y.index}: ${y.points}/${y.pointsRequired} points.`).join(' '))
 
   // Proof you live at the same address right now.
-  const sharedProofs = docs.filter((d) => d.docTypeId === RULESET.sharedAddressDocId && isDocumentAccepted(d)).length
+  const shared = docs.filter((d) => d.docTypeId === RULESET.sharedAddressDocId && isDocumentAccepted(d))
+  const sharedProofs = shared.length
   const needShared = RULESET.sharedAddressProofsPerPerson * 2
-  add('shared-address', sharedProofs >= needShared ? 'pass' : 'fail',
-    `${sharedProofs} of ${needShared} shared address proofs uploaded. You need ${RULESET.sharedAddressProofsPerPerson} each for you and your partner, covering the ${RULESET.sharedAddressMonths} months before you apply.`)
+  const sharedUncertified = shared.filter(needsCertifying).length
+  add('shared-address', withCertification(sharedProofs >= needShared ? 'pass' : 'fail', sharedUncertified),
+    `${sharedProofs} of ${needShared} shared address proofs uploaded. You need ${RULESET.sharedAddressProofsPerPerson} each for you and your partner, covering the ${RULESET.sharedAddressMonths} months before you apply.`
+    + (sharedUncertified ? ` ${sharedUncertified} still need${sharedUncertified === 1 ? 's' : ''} certifying.` : ''))
 
   // Core paperwork.
   const missingCore = RULESET.coreDocumentIds.filter(
     (id) => !docs.some((d) => d.docTypeId === id && isDocumentAccepted(d)),
   )
-  add('core-documents', missingCore.length === 0 ? 'pass' : 'fail',
+  const coreUncertified = RULESET.coreDocumentIds
+    .filter((id) => docs.some((d) => d.docTypeId === id && isDocumentAccepted(d))
+      && !docs.some((d) => d.docTypeId === id && isDocumentAccepted(d) && !needsCertifying(d)))
+    .map((id) => docTypeById(id)?.name ?? id)
+  add('core-documents', withCertification(missingCore.length === 0 ? 'pass' : 'fail', coreUncertified.length),
     missingCore.length === 0
-      ? 'All the main documents are uploaded and accepted.'
-      : `Still needed: ${missingCore.map((id) => docTypeById(id)?.name ?? id).join(', ')}.`)
+      ? `All the main documents are uploaded and accepted.${certifyNote(coreUncertified)}`
+      : `Still needed: ${missingCore.map((id) => docTypeById(id)?.name ?? id).join(', ')}.${certifyNote(coreUncertified)}`)
 
   // Things only you can confirm.
   for (const manual of RULESET.selfDeclaredRuleIds) {
@@ -274,7 +317,8 @@ export function assess(
 
   const sections = buildSections(docs, years)
   const nextSteps = buildNextSteps(profile, docs, years, rules, sections, stepOverrides)
-  const points = rules.reduce((s, r) => s + (r.state === 'pass' ? 1 : r.state === 'unknown' ? 0.5 : 0), 0)
+  const weight: Record<CheckState, number> = { pass: 1, uncertified: 0.75, unknown: 0.5, fail: 0 }
+  const points = rules.reduce((s, r) => s + weight[r.state], 0)
   const readinessPercent = Math.round((points / Math.max(1, rules.length)) * 100)
 
   return { applicationDate, years, rules, sections, nextSteps, readinessPercent, overall: worst(rules.map((r) => r.state)) }
@@ -296,12 +340,18 @@ export function buildSections(docs: StoredDocument[], years: ResidenceYear[]): S
 
     if (section.kind === 'per-year') {
       const needed = years.filter((y) => y.evidenceRequired)
-      const done = needed.filter((y) => y.proofState === 'pass').length
+      const done = needed.filter((y) => y.proofState === 'pass' || y.proofState === 'uncertified').length
+      const counted = new Set(needed.flatMap((y) => y.proofDocumentIds))
+      const uncertifiedDocs = own.filter((d) => counted.has(d.id) && needsCertifying(d))
       return {
         ...base,
         state: worst(needed.map((y) => y.proofState)),
-        message: `${done} of ${needed.length} years fully proved.`,
+        message: `${done} of ${needed.length} years have the right documents.`
+          + (uncertifiedDocs.length
+            ? ` ${uncertifiedDocs.length} document${uncertifiedDocs.length === 1 ? '' : 's'} still need${uncertifiedDocs.length === 1 ? 's' : ''} certifying.`
+            : ''),
         missingDocTypeIds: [],
+        uncertifiedDocumentIds: uncertifiedDocs.map((d) => d.id),
         uploaded: done,
         required: needed.length,
       }
@@ -310,13 +360,19 @@ export function buildSections(docs: StoredDocument[], years: ResidenceYear[]): S
     if (section.kind === 'count') {
       const required = section.required ?? 1
       const uploaded = accepted.length
+      const uncertifiedDocs = accepted.filter(needsCertifying)
+      const enough = uploaded >= required
       return {
         ...base,
-        state: uploaded >= required ? 'pass' : 'fail',
-        message: uploaded >= required
+        state: withCertification(enough ? 'pass' : 'fail', uncertifiedDocs.length),
+        message: (enough
           ? `All ${required} uploaded and accepted.`
-          : `${uploaded} of ${required} uploaded and accepted.`,
+          : `${uploaded} of ${required} uploaded and accepted.`)
+          + (uncertifiedDocs.length
+            ? ` ${uncertifiedDocs.length} still need${uncertifiedDocs.length === 1 ? 's' : ''} certifying.`
+            : ''),
         missingDocTypeIds: [],
+        uncertifiedDocumentIds: uncertifiedDocs.map((d) => d.id),
         uploaded,
         required,
       }
@@ -325,13 +381,23 @@ export function buildSections(docs: StoredDocument[], years: ResidenceYear[]): S
     const missing = section.docTypeIds.filter(
       (id) => !accepted.some((d) => d.docTypeId === id),
     )
+    // A type is only waiting on a certifier if no accepted copy of it is certified yet.
+    const waiting = section.docTypeIds.filter((id) => {
+      const right = accepted.filter((d) => d.docTypeId === id)
+      return right.length > 0 && right.every(needsCertifying)
+    })
+    const uncertifiedDocs = accepted.filter((d) => waiting.includes(d.docTypeId))
+    const names = waiting.map((id) => docTypeById(id)?.name ?? id)
     return {
       ...base,
-      state: missing.length === 0 ? 'pass' : 'fail',
+      state: withCertification(missing.length === 0 ? 'pass' : 'fail', waiting.length),
       message: missing.length === 0
-        ? 'Everything here is uploaded and accepted.'
-        : `Still needed: ${missing.map((id) => docTypeById(id)?.name ?? id).join(', ')}.`,
+        ? (waiting.length
+          ? `All uploaded. You have the right documents.${certifyNote(names)}`
+          : 'Everything here is uploaded and accepted.')
+        : `Still needed: ${missing.map((id) => docTypeById(id)?.name ?? id).join(', ')}.${certifyNote(names)}`,
       missingDocTypeIds: missing,
+      uncertifiedDocumentIds: uncertifiedDocs.map((d) => d.id),
       uploaded: section.docTypeIds.length - missing.length,
       required: section.docTypeIds.length,
     }
@@ -379,12 +445,17 @@ function buildNextSteps(
 
   for (const section of sections) {
     if (section.kind === 'per-year' || section.state === 'pass') continue
-    push(`section:${section.id}`, section.title, section.message, 'blocker', section.id)
+    push(`section:${section.id}`,
+      section.state === 'uncertified' ? `${section.title}: get copies certified` : section.title,
+      section.message, section.state === 'fail' ? 'blocker' : 'important', section.id)
   }
 
   for (const y of years) {
     if (y.evidenceRequired && y.proofState !== 'pass') {
-      push(`proof:year${y.index}`, `Add proof of living here for Year ${y.index}`,
+      push(`proof:year${y.index}`,
+        y.proofState === 'uncertified'
+          ? `Get your Year ${y.index} proof certified`
+          : `Add proof of living here for Year ${y.index}`,
         `${formatLong(y.start)} to ${formatLong(y.end)}. ${y.proofMessage}`, 'important', 'residence')
     }
   }
@@ -401,7 +472,15 @@ function buildNextSteps(
     if (r.state === 'unknown') push(`confirm:${r.ruleId}`, r.title, r.message, 'important', sectionIdForRule(r.ruleId))
   }
 
-  for (const s of RULESET.standingSteps) push(s.id, s.title, s.detail, s.priority)
+  const waiting = docs.filter((d) => isDocumentAccepted(d) && needsCertifying(d))
+  for (const s of RULESET.standingSteps) {
+    if (s.id === 'std:certify' && waiting.length) {
+      push(s.id, `${s.title}: ${waiting.length} document${waiting.length === 1 ? '' : 's'} waiting`,
+        `Take these with you: ${waiting.map((d) => d.fileName).join(', ')}. ${s.detail}`, s.priority)
+    } else {
+      push(s.id, s.title, s.detail, s.priority)
+    }
+  }
 
   const seen = new Set<string>()
   return steps.filter((s) => (seen.has(s.id) ? false : (seen.add(s.id), true)))

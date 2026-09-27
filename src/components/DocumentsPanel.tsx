@@ -190,6 +190,24 @@ function SectionCard({
       {open && (
         <div className="border-t border-ink-100 px-5 py-4">
           {section.kind === 'per-year' && <YearBreakdown assessment={assessment} />}
+          {status.uncertifiedDocumentIds.length > 0 && (
+            <div className="mb-4 rounded-xl bg-yellow-50 p-4 ring-1 ring-yellow-300">
+              <p className="text-sm font-semibold text-yellow-900">Uploaded, waiting to be certified</p>
+              <ul className="mt-1 grid gap-1">
+                {status.uncertifiedDocumentIds.map((id) => {
+                  const d = documents.find((x) => x.id === id)
+                  return (
+                    <li key={id} className="text-sm text-yellow-900">
+                      • {docTypeById(d?.docTypeId ?? '')?.name ?? 'Document'} <span className="text-yellow-800">({d?.fileName})</span>
+                    </li>
+                  )
+                })}
+              </ul>
+              <p className="mt-2 text-xs text-yellow-900">
+                Open each one below and tick "This copy has been certified" once it is done.
+              </p>
+            </div>
+          )}
           {section.kind === 'each-required' && status.missingDocTypeIds.length > 0 && (
             <div className="mb-4 rounded-xl bg-rose-50 p-4 ring-1 ring-rose-200">
               <p className="text-sm font-semibold text-rose-900">Still to upload</p>
@@ -335,6 +353,11 @@ function Uploader({ section, types, profile, onUpsert }: {
             ))}
           </ul>
           <p className="mt-2 text-xs text-ink-400">{selectedType.originalOrCopy}</p>
+          {selectedType.needsCertification && (
+            <p className="mt-2 rounded-lg bg-yellow-50 px-3 py-2 text-xs text-yellow-900 ring-1 ring-yellow-300">
+              This needs a certified copy. You can upload it now and tick "This copy has been certified" later.
+            </p>
+          )}
           {selectedType.niNote && (
             <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-xs text-ink-800 ring-1 ring-amber-200">{selectedType.niNote}</p>
           )}
@@ -398,6 +421,23 @@ function DocumentRow({ doc, profile, onUpsert, onRemove }: {
             ))}
             {doc.checks.length === 0 && <li className="text-sm text-ink-600">No checks run yet.</li>}
           </ul>
+
+          {docTypeById(doc.docTypeId)?.needsCertification && (
+            <label className={`mt-3 flex items-start gap-3 rounded-lg p-3 ring-1 ${doc.certified ? 'bg-shamrock-50 ring-shamrock-200' : 'bg-yellow-50 ring-yellow-300'}`}>
+              <input
+                type="checkbox" className="mt-0.5 size-4 accent-[color:var(--color-shamrock-600)]"
+                checked={!!doc.certified}
+                onChange={(e) => onUpsert({ ...doc, certified: e.target.checked })}
+              />
+              <span className="text-sm text-ink-800">
+                This copy has been certified.
+                <span className="mt-0.5 block text-xs text-ink-600">
+                  Tick this once a practising solicitor, commissioner for oaths, notary public or peace
+                  commissioner has certified it in person. Until then the document shows as Not certified.
+                </span>
+              </span>
+            </label>
+          )}
 
           {doc.checks.some((c) => c.state !== 'pass') && (
             <label className="mt-3 flex items-start gap-3 rounded-lg bg-white p-3 ring-1 ring-ink-200">

@@ -47,8 +47,10 @@ const GREY = rgb(0.29, 0.33, 0.39)
 const RED = rgb(0.75, 0.1, 0.2)
 const AMBER = rgb(0.7, 0.45, 0.05)
 
-const STATE_WORDS: Record<string, string> = { pass: 'Complete', fail: 'Not complete', unknown: 'Needs a look' }
-const STATE_COLOUR: Record<string, ReturnType<typeof rgb>> = { pass: GREEN, fail: RED, unknown: AMBER }
+const STATE_WORDS: Record<string, string> = {
+  pass: 'Complete', fail: 'Not complete', unknown: 'Needs a look', uncertified: 'Right documents, not certified yet',
+}
+const STATE_COLOUR: Record<string, ReturnType<typeof rgb>> = { pass: GREEN, fail: RED, unknown: AMBER, uncertified: AMBER }
 
 /** The built-in PDF fonts only know basic Western letters. Swap anything else for a close match. */
 function pdfSafe(text: string): string {

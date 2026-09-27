@@ -43,6 +43,8 @@ const doc = (docTypeId: string, coversFrom: string, coversTo: string): StoredDoc
   notes: '',
 })
 
+const certified = (d: StoredDocument): StoredDocument => ({ ...d, certified: true })
+
 const ruleState = (a: ReturnType<typeof assess>, id: string) => a.rules.find((r) => r.ruleId === id)?.state
 
 describe('residence windows', () => {
@@ -134,8 +136,8 @@ describe('the 150 point residence scorecard', () => {
 
   it('passes a year with one strong and one supporting document', () => {
     const docs = [
-      doc('employer-letter', '2025-11-01', '2025-11-30'),
-      doc('utility-bill', '2026-02-01', '2026-02-28'),
+      certified(doc('employer-letter', '2025-11-01', '2025-11-30')),
+      certified(doc('utility-bill', '2026-02-01', '2026-02-28')),
     ]
     const a = assess(profile(), docs, [], {}, APPLY)
     expect(a.years[0].points).toBe(150)
@@ -225,13 +227,13 @@ describe('sections line up with next steps', () => {
   })
 
   it('marks a section done once its documents are accepted', () => {
-    const a = assess(profile(), [doc('spouse-irish-proof', '', '')], [], {}, APPLY)
+    const a = assess(profile(), [certified(doc('spouse-irish-proof', '', ''))], [], {}, APPLY)
     expect(a.sections.find((s) => s.id === 'spouse-citizenship')?.state).toBe('pass')
   })
 
   it('counts the six shared address proofs', () => {
     const six = Array.from({ length: 6 }, (_, i) => ({
-      ...doc('shared-address-proof', '', ''), id: `shared-${i}`,
+      ...certified(doc('shared-address-proof', '', '')), id: `shared-${i}`,
     }))
     const partial = assess(profile(), six.slice(0, 4), [], {}, APPLY)
     expect(partial.sections.find((s) => s.id === 'shared-home')?.state).toBe('fail')
@@ -263,7 +265,7 @@ describe('one next step per document section', () => {
   })
 
   it('drops the step once the section is done', () => {
-    const a = assess(profile(), [doc('spouse-irish-proof', '', '')], [], {}, APPLY)
+    const a = assess(profile(), [certified(doc('spouse-irish-proof', '', ''))], [], {}, APPLY)
     expect(a.nextSteps.some((x) => x.id === 'section:spouse-citizenship')).toBe(false)
   })
 
@@ -299,5 +301,83 @@ describe('each proof of residence counts for one year only', () => {
     const a = assess(profile(), [mostlyYear1], [], {}, APPLY)
     expect(a.years[0].proofDocumentIds).toContain(mostlyYear1.id)
     expect(a.years[1].proofDocumentIds).not.toContain(mostlyYear1.id)
+  })
+})
+
+describe('right document, not certified yet', () => {
+  it('shows a year as Not certified, not Not met, when the points are there', () => {
+    const docs = [
+      doc('employer-letter', '2025-11-01', '2025-11-30'),
+      doc('utility-bill', '2026-02-01', '2026-02-28'),
+    ]
+    const a = assess(profile(), docs, [], {}, APPLY)
+    expect(a.years[0].points).toBe(150)
+    expect(a.years[0].uncertifiedCount).toBe(2)
+    expect(a.years[0].proofState).toBe('uncertified')
+    expect(a.years[0].proofMessage).toContain('still need certifying')
+  })
+
+  it('still says Not met when the points are short, whatever the certification', () => {
+    const a = assess(profile(), [doc('utility-bill', '2026-02-01', '2026-02-28')], [], {}, APPLY)
+    expect(a.years[0].proofState).toBe('fail')
+  })
+
+  it('turns green once every counted copy is ticked as certified', () => {
+    const docs = [
+      certified(doc('employer-letter', '2025-11-01', '2025-11-30')),
+      doc('utility-bill', '2026-02-01', '2026-02-28'),
+    ]
+    const half = assess(profile(), docs, [], {}, APPLY)
+    expect(half.years[0].proofState).toBe('uncertified')
+    docs[1] = certified(docs[1])
+    expect(assess(profile(), docs, [], {}, APPLY).years[0].proofState).toBe('pass')
+  })
+
+  it('shows a whole section as Not certified when everything is there', () => {
+    const a = assess(profile(), [doc('spouse-irish-proof', '', '')], [], {}, APPLY)
+    const s = a.sections.find((x) => x.id === 'spouse-citizenship')!
+    expect(s.state).toBe('uncertified')
+    expect(s.missingDocTypeIds).toEqual([])
+    expect(s.uncertifiedDocumentIds).toHaveLength(1)
+    expect(s.message).toContain('still needs certifying')
+  })
+
+  it('keeps a section red when something is missing, even if the rest only needs certifying', () => {
+    const a = assess(profile(), [doc('marriage-certificate', '', '')], [], {}, APPLY)
+    const s = a.sections.find((x) => x.id === 'marriage')!
+    expect(s.state).toBe('fail')
+    expect(s.missingDocTypeIds).toContain('spousal-declaration')
+    expect(s.uncertifiedDocumentIds).toHaveLength(1)
+  })
+
+  it('never asks to certify a form the certifier or witness fills in', () => {
+    const a = assess(profile(), [doc('spousal-declaration', '', '')], [], {}, APPLY)
+    const s = a.sections.find((x) => x.id === 'marriage')!
+    expect(s.uncertifiedDocumentIds).toHaveLength(0)
+  })
+
+  it('makes a certify-only section an important step, not a blocker', () => {
+    const a = assess(profile(), [doc('spouse-irish-proof', '', '')], [], {}, APPLY)
+    const step = a.nextSteps.find((x) => x.id === 'section:spouse-citizenship')!
+    expect(step.priority).toBe('important')
+    expect(step.title).toContain('certified')
+  })
+
+  it('lists the waiting files on the book a certifier step', () => {
+    const a = assess(profile(), [doc('birth-certificate', '', '')], [], {}, APPLY)
+    const step = a.nextSteps.find((x) => x.id === 'std:certify')!
+    expect(step.title).toContain('1 document waiting')
+    expect(step.detail).toContain('birth-certificate.pdf')
+  })
+
+  it('ranks Not certified above Not met but below a full pass in readiness', () => {
+    const six = (c: boolean) => Array.from({ length: 6 }, (_, i) => ({
+      ...doc('shared-address-proof', '', ''), id: `s${i}`, certified: c,
+    }))
+    const none = assess(profile(), [], [], {}, APPLY).readinessPercent
+    const waiting = assess(profile(), six(false), [], {}, APPLY).readinessPercent
+    const done = assess(profile(), six(true), [], {}, APPLY).readinessPercent
+    expect(waiting).toBeGreaterThan(none)
+    expect(done).toBeGreaterThan(waiting)
   })
 })

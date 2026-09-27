@@ -32,7 +32,14 @@ export async function saveProfile(p: Profile) {
 }
 
 export async function loadDocuments(): Promise<StoredDocument[]> {
-  return (await get<StoredDocument[]>(DOCS_KEY, store)) ?? []
+  const docs = (await get<StoredDocument[]>(DOCS_KEY, store)) ?? []
+  // Earlier versions ran "is it certified" as a check it could never answer, which made
+  // right documents look unsure. Certification is now its own tick box, so drop that check.
+  return docs.map((d) => ({
+    ...d,
+    checks: d.checks.filter((c) => c.criterionId !== 'certified'),
+    certified: d.certified ?? false,
+  }))
 }
 export async function saveDocuments(docs: StoredDocument[]) {
   await set(DOCS_KEY, docs, store)

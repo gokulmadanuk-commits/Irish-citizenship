@@ -115,7 +115,9 @@ export function planExport(assessment: Assessment, documents: StoredDocument[]):
   })
 }
 
-const STATE_WORDS: Record<string, string> = { pass: 'Complete', fail: 'Not complete', unknown: 'Needs a look' }
+const STATE_WORDS: Record<string, string> = {
+  pass: 'Complete', fail: 'Not complete', unknown: 'Needs a look', uncertified: 'Right documents, not certified yet',
+}
 
 /** A plain text contents page that goes at the top of the zip. */
 export function contentsText(

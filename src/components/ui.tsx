@@ -24,11 +24,13 @@ const STATE_STYLES: Record<CheckState, string> = {
   pass: 'bg-shamrock-100 text-shamrock-800 ring-shamrock-200',
   fail: 'bg-rose-100 text-rose-800 ring-rose-200',
   unknown: 'bg-amber-100 text-amber-900 ring-amber-200',
+  uncertified: 'bg-yellow-100 text-yellow-900 ring-yellow-300',
 }
 const STATE_WORDS: Record<CheckState, string> = {
   pass: 'Met',
   fail: 'Not met',
   unknown: 'Needs a look',
+  uncertified: 'Not certified',
 }
 
 export function StatePill({ state, label }: { state: CheckState; label?: string }) {

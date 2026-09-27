@@ -45,6 +45,8 @@ export interface DocumentType {
   acceptanceCriteria: Criterion[]
   /** Proof of residence documents each cover a slice of time. */
   isResidenceProof: boolean
+  /** True when the Department wants a certified copy of this document, not the file as it is. */
+  needsCertification: boolean
   originalOrCopy: string
   /** ISD residency scorecard value: 100 for a strong (Type A) proof, 50 for a supporting (Type B) proof. */
   points?: number
@@ -69,7 +71,11 @@ export type AutoTest =
   | { kind: 'hasDateInCoveredPeriod' }
   | { kind: 'hasAnyDate' }
 
-export type CheckState = 'pass' | 'fail' | 'unknown'
+/**
+ * pass: done. fail: missing or wrong. unknown: the app could not tell.
+ * uncertified: the right document is here, it just still needs certifying.
+ */
+export type CheckState = 'pass' | 'fail' | 'unknown' | 'uncertified'
 
 export interface CheckResult {
   criterionId: string
@@ -93,6 +99,8 @@ export interface StoredDocument {
   ocrConfidence: number | null
   checks: CheckResult[]
   userConfirmed: boolean
+  /** The user has had this copy certified by a solicitor, commissioner for oaths, notary or peace commissioner. */
+  certified?: boolean
   notes: string
 }
 
@@ -120,6 +128,8 @@ export interface ResidenceYear {
   absenceState: CheckState
   absenceMessage: string
   proofDocumentIds: string[]
+  /** Documents counted for this year that still need certifying. */
+  uncertifiedCount: number
   points: number
   pointsRequired: number
   hasStrongProof: boolean
@@ -172,6 +182,8 @@ export interface SectionStatus {
   documentIds: string[]
   /** Document types still missing, for an 'each-required' section. */
   missingDocTypeIds: string[]
+  /** Documents that are here and right, but still need certifying. */
+  uncertifiedDocumentIds: string[]
   uploaded: number
   required: number
 }

@@ -69,7 +69,15 @@ function evaluate(
   }
 }
 
+/** What the document's own pill shows. */
 export function documentState(doc: StoredDocument): CheckState {
+  const content = contentState(doc)
+  if (content !== 'pass') return content
+  return docTypeById(doc.docTypeId)?.needsCertification && !doc.certified ? 'uncertified' : 'pass'
+}
+
+/** Is it the right document, leaving certification aside? */
+function contentState(doc: StoredDocument): CheckState {
   if (doc.userConfirmed && !doc.checks.some((c) => c.state === 'fail')) return 'pass'
   if (!doc.checks.length) return 'unknown'
   if (doc.checks.some((c) => c.state === 'fail')) return 'fail'

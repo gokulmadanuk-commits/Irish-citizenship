@@ -28,17 +28,28 @@ const HAS_DATE: Criterion = {
   hint: 'Undated documents are refused.',
   autoTest: { kind: 'hasAnyDate' },
 }
-const CERTIFIED: Criterion = {
-  id: 'certified',
-  label: 'It is a certified colour copy',
-  hint: 'A solicitor, commissioner for oaths, notary public or peace commissioner must certify it in person. Not by post or email.',
-}
 
 const kw = (id: string, label: string, keywords: string[], hint: string): Criterion => ({
   id, label, hint, autoTest: { kind: 'containsAnyKeyword', keywords },
 })
 
-export const DOCUMENT_TYPES: DocumentType[] = [
+type RawDocumentType = Omit<DocumentType, 'needsCertification'>
+
+/**
+ * Documents the Department wants as certified copies. The rule is "only send
+ * certified copies of your documents, unless we ask for the original". Forms a
+ * certifier or witness fills in, police certificates and your UK status records
+ * are sent as they are.
+ */
+export const NEEDS_CERTIFICATION = new Set([
+  'bank-statement', 'p60', 'self-assessment', 'tax-submission-receipt', 'employer-letter',
+  'social-contributions', 'utility-bill', 'phone-bill', 'tenancy', 'medical-letter',
+  'rates-bill', 'credit-card-statement',
+  'passport-biometric', 'birth-certificate', 'marriage-certificate', 'spouse-irish-proof',
+  'shared-address-proof',
+])
+
+const RAW_DOCUMENT_TYPES: RawDocumentType[] = [
   // ---------- Strong proof of residence: 100 points ----------
   {
     docId: 'bank-statement',
@@ -222,7 +233,7 @@ export const DOCUMENT_TYPES: DocumentType[] = [
     isResidenceProof: false,
     originalOrCopy: 'Certified colour copy. Since 20 April 2023 you no longer send the original unless asked.',
     acceptanceCriteria: [
-      NAME, CERTIFIED,
+      NAME,
       kw('passport', 'It is the photo page of a passport', ['passport', 'p<', 'authority', 'nationality'], 'The page with your photo and machine readable lines.'),
       HAS_DATE,
     ],
@@ -247,7 +258,7 @@ export const DOCUMENT_TYPES: DocumentType[] = [
     whyNeeded: 'Every applicant must send one. If it is not in English or Irish, add a professional translation.',
     isResidenceProof: false,
     originalOrCopy: 'Certified copy.',
-    acceptanceCriteria: [NAME, CERTIFIED, HAS_DATE],
+    acceptanceCriteria: [NAME, HAS_DATE],
   },
 
   // ---------- Marriage and your partner ----------
@@ -259,7 +270,7 @@ export const DOCUMENT_TYPES: DocumentType[] = [
     isResidenceProof: false,
     originalOrCopy: 'Certified copy, with its own certification of marriage form.',
     acceptanceCriteria: [
-      NAME, CERTIFIED, HAS_DATE,
+      NAME, HAS_DATE,
       kw('marriage', 'It is a marriage certificate', ['marriage', 'married', 'civil partnership', 'registrar', 'solemnised'], 'A civil marriage certificate.'),
     ],
   },
@@ -283,7 +294,7 @@ export const DOCUMENT_TYPES: DocumentType[] = [
     isResidenceProof: false,
     originalOrCopy: 'Certified copy.',
     acceptanceCriteria: [
-      CERTIFIED, HAS_DATE,
+      HAS_DATE,
       kw('irish', 'It shows Irish citizenship', ['ireland', 'eire', 'irl', 'irish', 'naturalisation', 'foreign births'], 'Irish passport, Irish birth certificate, naturalisation certificate or Foreign Births Register entry.'),
     ],
   },
@@ -342,7 +353,7 @@ export const DOCUMENT_TYPES: DocumentType[] = [
     category: 'marriage',
     whyNeeded: 'You need three different documents each, six in total, covering the three months just before you apply.',
     isResidenceProof: false,
-    originalOrCopy: 'Copies. Utility bills, bank statements, rent or mortgage papers, or letters from an employer.',
+    originalOrCopy: 'Certified copies. Utility bills, bank statements, rent or mortgage papers, or letters from an employer.',
     acceptanceCriteria: [ADDRESS, HAS_DATE],
   },
 
@@ -361,6 +372,11 @@ export const DOCUMENT_TYPES: DocumentType[] = [
     ],
   },
 ]
+
+export const DOCUMENT_TYPES: DocumentType[] = RAW_DOCUMENT_TYPES.map((d) => ({
+  ...d,
+  needsCertification: NEEDS_CERTIFICATION.has(d.docId),
+}))
 
 const byId = new Map(DOCUMENT_TYPES.map((d) => [d.docId, d]))
 export function docTypeById(id: string): DocumentType | undefined {
