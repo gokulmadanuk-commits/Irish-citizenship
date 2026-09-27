@@ -72,17 +72,6 @@ export function buildYears(
         : `${daysPresent} days on the island of Ireland in this year.`
     }
 
-    const proofDocs = docs.filter((d) => {
-      const t = docTypeById(d.docTypeId)
-      if (!t?.isResidenceProof) return false
-      if (!d.coversFrom || !d.coversTo) return false
-      if (!isDocumentAccepted(d)) return false
-      return overlapDays(d.coversFrom, d.coversTo, start, end) > 0
-    })
-
-    const points = proofDocs.reduce((s, d) => s + (docTypeById(d.docTypeId)?.points ?? 0), 0)
-    const hasStrongProof = proofDocs.some((d) => (docTypeById(d.docTypeId)?.points ?? 0) >= RULESET.strongProofPoints)
-
     years.push({
       index: i,
       role,
@@ -99,19 +88,50 @@ export function buildYears(
       absenceCeiling: ceiling,
       absenceState,
       absenceMessage,
-      proofDocumentIds: proofDocs.map((d) => d.id),
-      points,
+      proofDocumentIds: [],
+      points: 0,
       pointsRequired: RULESET.pointsRequiredPerYear,
-      hasStrongProof,
-      ...judgeProof(false, points, hasStrongProof, proofDocs.length),
+      hasStrongProof: false,
+      ...judgeProof(false, 0, false, 0),
     })
   }
 
   markYearsNeedingEvidence(years)
+
+  for (const d of docs) {
+    if (!docTypeById(d.docTypeId)?.isResidenceProof || !isDocumentAccepted(d)) continue
+    const index = assignYear(d, years)
+    if (index === null) continue
+    const y = years[index - 1]
+    const pts = docTypeById(d.docTypeId)?.points ?? 0
+    y.proofDocumentIds.push(d.id)
+    y.points += pts
+    if (pts >= RULESET.strongProofPoints) y.hasStrongProof = true
+  }
+
   for (const y of years) {
     Object.assign(y, judgeProof(y.evidenceRequired, y.points, y.hasStrongProof, y.proofDocumentIds.length))
   }
   return years
+}
+
+/**
+ * The one residence year a document counts for. The Department says never to use
+ * the same document for two years. A year you need to prove wins over one you do
+ * not; after that, the year it overlaps most; on a tie, the more recent year.
+ */
+export function assignYear(doc: StoredDocument, years: ResidenceYear[]): number | null {
+  if (!doc.coversFrom || !doc.coversTo) return null
+  let best: { index: number; days: number; required: boolean } | null = null
+  for (const y of years) {
+    const days = overlapDays(doc.coversFrom, doc.coversTo, y.start, y.end)
+    if (days <= 0) continue
+    const better = !best
+      || (y.evidenceRequired && !best.required)
+      || (y.evidenceRequired === best.required && days > best.days)
+    if (better) best = { index: y.index, days, required: y.evidenceRequired }
+  }
+  return best?.index ?? null
 }
 
 /**

@@ -273,3 +273,31 @@ describe('one next step per document section', () => {
     expect(a.nextSteps.some((s) => s.id === 'fix:shared-address')).toBe(false)
   })
 })
+
+describe('each proof of residence counts for one year only', () => {
+  it('does not count a document that spans two years in both', () => {
+    const spanning = doc('employer-letter', '2025-06-01', '2025-12-31')
+    const a = assess(profile(), [spanning], [], {}, APPLY)
+    const total = a.years.reduce((s, y) => s + y.points, 0)
+    expect(total).toBe(100)
+    expect(a.years.filter((y) => y.proofDocumentIds.includes(spanning.id))).toHaveLength(1)
+  })
+
+  it('gives it to the year you need to prove, even if it overlaps another year more', () => {
+    // Applying 1 Nov 2026 after arriving 1 May 2023: years 1 to 3 need proof, year 4 does not.
+    // Year 4 (Nov 2022 to Nov 2023) holds 7 months of this tax year, Year 3 only 5.
+    const taxYear = doc('self-assessment', '2023-04-06', '2024-04-05')
+    const a = assess(profile({ plannedApplicationDate: '2026-11-01' }), [taxYear], [], {}, '2026-11-01')
+    expect(a.years[3].evidenceRequired).toBe(false)
+    const year = a.years.find((y) => y.proofDocumentIds.includes(taxYear.id))
+    expect(year?.index).toBe(3)
+    expect(a.years[3].points).toBe(0)
+  })
+
+  it('otherwise picks the year it overlaps most', () => {
+    const mostlyYear1 = doc('employer-letter', '2025-08-01', '2026-03-01')
+    const a = assess(profile(), [mostlyYear1], [], {}, APPLY)
+    expect(a.years[0].proofDocumentIds).toContain(mostlyYear1.id)
+    expect(a.years[1].proofDocumentIds).not.toContain(mostlyYear1.id)
+  })
+})

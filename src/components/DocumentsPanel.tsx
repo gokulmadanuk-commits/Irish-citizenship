@@ -7,6 +7,7 @@ import { documentState, runChecks } from '../rules/checks'
 import { extractText } from '../lib/extract'
 import { saveFile, loadFile } from '../lib/storage'
 import { formatLong, toISO } from '../lib/dates'
+import { buildPrintablePdf, buildZip, saveBlob } from '../lib/exportPack'
 
 export function DocumentsPanel({ profile, documents, assessment, openSectionId, onUpsert, onRemove }: {
   profile: Profile
@@ -50,6 +51,8 @@ export function DocumentsPanel({ profile, documents, assessment, openSectionId, 
         </ul>
       </Card>
 
+      <DownloadCard profile={profile} documents={documents} assessment={assessment} />
+
       {DOCUMENT_SECTIONS.map((section) => {
         const status = assessment.sections.find((s) => s.id === section.id)
         if (!status) return null
@@ -69,6 +72,87 @@ export function DocumentsPanel({ profile, documents, assessment, openSectionId, 
         )
       })}
     </div>
+  )
+}
+
+function DownloadCard({ profile, documents, assessment }: {
+  profile: Profile
+  documents: StoredDocument[]
+  assessment: Assessment
+}) {
+  const [busy, setBusy] = useState<{ what: string; done: number; total: number; label: string } | null>(null)
+  const [note, setNote] = useState<string | null>(null)
+  const stamp = toISO(new Date())
+  const who = profile.applicantFullName ? ` - ${profile.applicantFullName}` : ''
+
+  const run = async (what: 'zip' | 'pdf') => {
+    setNote(null)
+    const onProgress = (done: number, total: number, label: string) =>
+      setBusy({ what, done, total, label })
+    setBusy({ what, done: 0, total: documents.length, label: 'Starting' })
+    try {
+      if (what === 'zip') {
+        const blob = await buildZip(assessment, profile, documents, onProgress)
+        saveBlob(blob, `Irish citizenship documents${who} ${stamp}.zip`)
+        setNote('Saved to your Downloads folder. Double-click it to open the folders.')
+      } else {
+        const { blob, skipped } = await buildPrintablePdf(assessment, profile, documents, onProgress)
+        saveBlob(blob, `Irish citizenship print pack${who} ${stamp}.pdf`)
+        setNote(skipped.length
+          ? `Saved to your Downloads folder. ${skipped.length} file${skipped.length > 1 ? 's' : ''} could not go in the PDF and ${skipped.length > 1 ? 'are' : 'is'} marked on a page of ${skipped.length > 1 ? 'their' : 'its'} own: ${skipped.join(', ')}.`
+          : 'Saved to your Downloads folder. Open it and print it in one go.')
+      }
+    } catch (err) {
+      console.error(err)
+      setNote('Something went wrong making the download. Try again, or try the other button.')
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  return (
+    <Card
+      title="Download everything"
+      subtitle="Every file, sorted by section. Made on this device. Nothing is sent anywhere."
+    >
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="rounded-xl bg-ink-50 p-4 ring-1 ring-ink-200">
+          <p className="text-sm font-semibold text-ink-900">Folders, one per section</p>
+          <p className="mt-1 text-sm text-ink-600">
+            A zip file. Inside, one folder for each section, and proof of residence split into a folder per year.
+            Use these files when you upload to the online portal.
+          </p>
+          <div className="mt-3">
+            <Button onClick={() => void run('zip')} disabled={!!busy || documents.length === 0}>Download folders</Button>
+          </div>
+        </div>
+        <div className="rounded-xl bg-ink-50 p-4 ring-1 ring-ink-200">
+          <p className="text-sm font-semibold text-ink-900">One PDF to print</p>
+          <p className="mt-1 text-sm text-ink-600">
+            A cover page, a divider page for each section, then every document in order.
+            For printing and your own records only. Do not upload it to the portal as one file.
+          </p>
+          <div className="mt-3">
+            <Button variant="ghost" onClick={() => void run('pdf')} disabled={!!busy || documents.length === 0}>Download print pack</Button>
+          </div>
+        </div>
+      </div>
+
+      {busy && (
+        <div className="mt-4 rounded-lg bg-shamrock-50 p-4 ring-1 ring-shamrock-200">
+          <p className="text-sm font-medium text-shamrock-800">
+            Making the {busy.what === 'zip' ? 'folders' : 'print pack'} · {busy.done} of {busy.total}
+          </p>
+          <p className="truncate text-xs text-shamrock-700">{busy.label}</p>
+          <div className="mt-2 h-2 overflow-hidden rounded-full bg-shamrock-100">
+            <div className="h-full bg-shamrock-500 transition-all"
+              style={{ width: `${busy.total ? (busy.done / busy.total) * 100 : 5}%` }} />
+          </div>
+        </div>
+      )}
+      {note && <p className="mt-3 text-sm text-ink-800">{note}</p>}
+      {documents.length === 0 && <p className="mt-3 text-sm text-ink-600">Upload a document first.</p>}
+    </Card>
   )
 }
 
