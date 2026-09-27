@@ -5,6 +5,8 @@
 
 export const FORMS_CHECKED_ON = '27 September 2026'
 
+import type { Assessment, StoredDocument } from '../lib/types'
+
 const BASE = 'https://www.irishimmigration.ie/wp-content/uploads/citizenship/'
 
 export interface OfficialForm {
@@ -23,6 +25,8 @@ export interface OfficialForm {
   when: string
   /** What to do with it, step by step. */
   steps: string[]
+  /** For a fallback form: the thing that, once you have it, means you do not need this form. */
+  fallbackFor?: 'residence-points' | 'passport' | 'birth-certificate'
 }
 
 export const OFFICIAL_FORMS: OfficialForm[] = [
@@ -85,6 +89,7 @@ export const OFFICIAL_FORMS: OfficialForm[] = [
     url: `${BASE}residency-affidavit-proof-form-citizenship-0092026.pdf`,
     sectionId: 'residence',
     need: 'only-if',
+    fallbackFor: 'residence-points',
     when: 'Only if you truly cannot reach 150 points for a year. It is the Minister’s choice whether to accept it.',
     steps: [
       'Print the form and fill it in, but leave your signature blank.',
@@ -99,6 +104,7 @@ export const OFFICIAL_FORMS: OfficialForm[] = [
     url: `${BASE}download-passport-affidavit-form-citizenship-0082026.pdf`,
     sectionId: 'identity',
     need: 'only-if',
+    fallbackFor: 'passport',
     when: 'Only if you cannot get a passport. If you can get one, you must send the passport instead.',
     steps: [
       'Print the form and fill it in, but leave your signature blank.',
@@ -113,6 +119,7 @@ export const OFFICIAL_FORMS: OfficialForm[] = [
     url: `${BASE}birth-affidavit-citizenship-form-citizenship-0062026.pdf`,
     sectionId: 'identity',
     need: 'only-if',
+    fallbackFor: 'birth-certificate',
     when: 'Only if you cannot get your birth certificate. If you can get one, you must send the certificate instead.',
     steps: [
       'Print the form and fill it in, but leave your signature blank.',
@@ -126,6 +133,25 @@ export const OFFICIAL_FORMS: OfficialForm[] = [
 export const NO_PUBLISHED_FORM: Record<string, string> = {
   'character-declaration':
     'The Department lists a statutory declaration of character, but does not publish a separate blank form for it on its citizenship pages. If the online application asks you to upload one, ask through the Customer Service Portal which form to use.',
+}
+
+/**
+ * True once you have what a fallback form stands in for, so the form is not for you.
+ * The Department warns that sending an affidavit when the document exists can delay you.
+ */
+export function fallbackCovered(form: OfficialForm, assessment: Assessment, documents: StoredDocument[]): boolean {
+  switch (form.fallbackFor) {
+    case 'residence-points': {
+      const needed = assessment.years.filter((y) => y.evidenceRequired)
+      return needed.length > 0 && needed.every((y) => y.points >= y.pointsRequired)
+    }
+    case 'passport':
+      return documents.some((d) => d.docTypeId === 'passport-biometric')
+    case 'birth-certificate':
+      return documents.some((d) => d.docTypeId === 'birth-certificate')
+    default:
+      return false
+  }
 }
 
 export function formsForSection(sectionId: string): OfficialForm[] {

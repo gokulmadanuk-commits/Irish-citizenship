@@ -8,7 +8,9 @@ import { extractText } from '../lib/extract'
 import { saveFile, loadFile } from '../lib/storage'
 import { formatLong, toISO } from '../lib/dates'
 import { buildPrintablePdf, buildZip, saveBlob } from '../lib/exportPack'
-import { FORMS_CHECKED_ON, NO_PUBLISHED_FORM, formForDocType, formsForSection, type OfficialForm } from '../rules/forms'
+import {
+  FORMS_CHECKED_ON, NO_PUBLISHED_FORM, fallbackCovered, formForDocType, formsForSection, type OfficialForm,
+} from '../rules/forms'
 
 export function DocumentsPanel({ profile, documents, assessment, openSectionId, onUpsert, onRemove }: {
   profile: Profile
@@ -191,7 +193,7 @@ function SectionCard({
       {open && (
         <div className="border-t border-ink-100 px-5 py-4">
           {section.kind === 'per-year' && <YearBreakdown assessment={assessment} />}
-          <SectionForms sectionId={section.id} />
+          <SectionForms sectionId={section.id} assessment={assessment} documents={documents} />
 
           {status.uncertifiedDocumentIds.length > 0 && (
             <div className="mb-4 rounded-xl bg-yellow-50 p-4 ring-1 ring-yellow-300">
@@ -242,12 +244,19 @@ function SectionCard({
   )
 }
 
-function SectionForms({ sectionId }: { sectionId: string }) {
+function SectionForms({ sectionId, assessment, documents }: {
+  sectionId: string
+  assessment: Assessment
+  documents: StoredDocument[]
+}) {
   const forms = formsForSection(sectionId)
   const [open, setOpen] = useState<string | null>(null)
+  const [showFallback, setShowFallback] = useState(false)
   if (forms.length === 0) return null
   const needed = forms.filter((f) => f.need === 'needed')
-  const fallback = forms.filter((f) => f.need === 'only-if')
+  const allFallback = forms.filter((f) => f.need === 'only-if')
+  const fallback = allFallback.filter((f) => !fallbackCovered(f, assessment, documents))
+  const covered = allFallback.length - fallback.length
   return (
     <div className="mb-4 rounded-xl bg-shamrock-50 p-4 ring-1 ring-shamrock-200">
       <p className="text-sm font-semibold text-shamrock-900">Official blank forms for this section</p>
@@ -257,10 +266,25 @@ function SectionForms({ sectionId }: { sectionId: string }) {
       </p>
       {needed.length > 0 && <FormList forms={needed} open={open} setOpen={setOpen} />}
       {fallback.length > 0 && (
-        <>
-          <p className="mt-3 text-xs font-semibold text-ink-800">Only if you cannot get the usual document</p>
-          <FormList forms={fallback} open={open} setOpen={setOpen} />
-        </>
+        <div className="mt-3">
+          <button onClick={() => setShowFallback(!showFallback)}
+            className="text-xs font-semibold text-ink-700 hover:underline">
+            {showFallback ? '▾' : '▸'} Cannot get one of the usual documents? {showFallback ? 'Hide' : 'Show'} the fallback forms
+          </button>
+          {showFallback && (
+            <>
+              <p className="mt-1 text-xs text-ink-600">
+                Use these only if a document truly cannot be got. Sending one when the document exists can delay you.
+              </p>
+              <FormList forms={fallback} open={open} setOpen={setOpen} />
+            </>
+          )}
+        </div>
+      )}
+      {covered > 0 && (
+        <p className="mt-3 text-xs text-shamrock-800">
+          ✓ {covered === 1 ? 'A fallback form is' : `${covered} fallback forms are`} hidden. You have the documents, so you do not need {covered === 1 ? 'it' : 'them'}.
+        </p>
       )}
     </div>
   )

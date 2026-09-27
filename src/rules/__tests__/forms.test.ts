@@ -50,3 +50,55 @@ describe('the official blank forms', () => {
     expect(formsForSection('marriage').map((f) => f.id)).toEqual(['marriage-certification', 'spousal-declaration'])
   })
 })
+
+import { fallbackCovered } from '../forms'
+import { assess } from '../engine'
+import type { Profile, StoredDocument } from '../../lib/types'
+
+const profile: Profile = {
+  applicantFullName: 'Test Person', dateOfBirth: '1988-07-06', nationality: 'Indian',
+  currentAddress: '5 Example Avenue, Bangor, BT20 1AA', movedToIslandOn: '2023-05-01',
+  marriageDate: '2019-04-25', spouseFullName: 'Partner', spouseIrishCitizenshipProof: 'irish-passport',
+  livingTogether: true, ukImmigrationStatus: 'UK spouse visa', plannedApplicationDate: '2026-11-01',
+}
+const d = (id: string, docTypeId: string, from = '', to = '', certified = false): StoredDocument => ({
+  id, docTypeId, fileName: `${id}.pdf`, mimeType: 'application/pdf', sizeBytes: 1,
+  uploadedAt: '2026-09-01T00:00:00.000Z', coversFrom: from, coversTo: to, ocrText: '', ocrState: 'done',
+  ocrConfidence: 90, checks: [{ criterionId: 'x', label: 'x', state: 'pass', evidence: '' }],
+  userConfirmed: false, certified, notes: '',
+})
+const affidavit = OFFICIAL_FORMS.find((f) => f.id === 'residency-affidavit')!
+
+describe('fallback forms only show when you might need them', () => {
+  it('keeps the residence affidavit while a year is short of 150 points', () => {
+    const docs = [d('a', 'employer-letter', '2026-01-01', '2026-01-31'), d('b', 'utility-bill', '2026-02-01', '2026-02-28')]
+    expect(fallbackCovered(affidavit, assess(profile, docs, [], {}, '2026-11-01'), docs)).toBe(false)
+  })
+
+  it('hides it once every year you need has 150 points, even before certifying', () => {
+    const docs = [
+      d('1a', 'employer-letter', '2026-01-01', '2026-01-31'), d('1b', 'utility-bill', '2026-02-01', '2026-02-28'),
+      d('2a', 'employer-letter', '2025-01-01', '2025-01-31'), d('2b', 'utility-bill', '2025-02-01', '2025-02-28'),
+      d('3a', 'employer-letter', '2024-01-01', '2024-01-31'), d('3b', 'utility-bill', '2024-02-01', '2024-02-28'),
+    ]
+    const a = assess(profile, docs, [], {}, '2026-11-01')
+    expect(a.years.filter((y) => y.evidenceRequired).every((y) => y.points >= 150)).toBe(true)
+    expect(fallbackCovered(affidavit, a, docs)).toBe(true)
+  })
+
+  it('hides the passport and birth affidavits once those documents are uploaded', () => {
+    const a = assess(profile, [], [], {}, '2026-11-01')
+    const passport = OFFICIAL_FORMS.find((f) => f.id === 'passport-affidavit')!
+    const birth = OFFICIAL_FORMS.find((f) => f.id === 'birth-affidavit')!
+    expect(fallbackCovered(passport, a, [])).toBe(false)
+    expect(fallbackCovered(passport, a, [d('p', 'passport-biometric')])).toBe(true)
+    expect(fallbackCovered(birth, a, [d('b', 'birth-certificate')])).toBe(true)
+  })
+
+  it('never hides a form everyone needs', () => {
+    const a = assess(profile, [], [], {}, '2026-11-01')
+    for (const f of OFFICIAL_FORMS.filter((x) => x.need === 'needed')) {
+      expect(fallbackCovered(f, a, []), f.id).toBe(false)
+    }
+  })
+})
