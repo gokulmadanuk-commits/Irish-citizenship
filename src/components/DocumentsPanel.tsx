@@ -8,6 +8,7 @@ import { extractText } from '../lib/extract'
 import { saveFile, loadFile } from '../lib/storage'
 import { formatLong, toISO } from '../lib/dates'
 import { buildPrintablePdf, buildZip, saveBlob } from '../lib/exportPack'
+import { FORMS_CHECKED_ON, NO_PUBLISHED_FORM, formForDocType, formsForSection, type OfficialForm } from '../rules/forms'
 
 export function DocumentsPanel({ profile, documents, assessment, openSectionId, onUpsert, onRemove }: {
   profile: Profile
@@ -190,6 +191,8 @@ function SectionCard({
       {open && (
         <div className="border-t border-ink-100 px-5 py-4">
           {section.kind === 'per-year' && <YearBreakdown assessment={assessment} />}
+          <SectionForms sectionId={section.id} />
+
           {status.uncertifiedDocumentIds.length > 0 && (
             <div className="mb-4 rounded-xl bg-yellow-50 p-4 ring-1 ring-yellow-300">
               <p className="text-sm font-semibold text-yellow-900">Uploaded, waiting to be certified</p>
@@ -236,6 +239,66 @@ function SectionCard({
         </div>
       )}
     </section>
+  )
+}
+
+function SectionForms({ sectionId }: { sectionId: string }) {
+  const forms = formsForSection(sectionId)
+  const [open, setOpen] = useState<string | null>(null)
+  if (forms.length === 0) return null
+  const needed = forms.filter((f) => f.need === 'needed')
+  const fallback = forms.filter((f) => f.need === 'only-if')
+  return (
+    <div className="mb-4 rounded-xl bg-shamrock-50 p-4 ring-1 ring-shamrock-200">
+      <p className="text-sm font-semibold text-shamrock-900">Official blank forms for this section</p>
+      <p className="mt-0.5 text-xs text-shamrock-800">
+        Straight from the Department&apos;s website, checked {FORMS_CHECKED_ON}. Print them and fill them in by hand.
+        Download a fresh copy on the day you use it. Old versions are sent back.
+      </p>
+      {needed.length > 0 && <FormList forms={needed} open={open} setOpen={setOpen} />}
+      {fallback.length > 0 && (
+        <>
+          <p className="mt-3 text-xs font-semibold text-ink-800">Only if you cannot get the usual document</p>
+          <FormList forms={fallback} open={open} setOpen={setOpen} />
+        </>
+      )}
+    </div>
+  )
+}
+
+function FormList({ forms, open, setOpen }: {
+  forms: OfficialForm[]
+  open: string | null
+  setOpen: (id: string | null) => void
+}) {
+  return (
+    <ul className="mt-2 grid gap-2">
+      {forms.map((f) => (
+        <li key={f.id} className="rounded-lg bg-white p-3 ring-1 ring-ink-200">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-ink-900">{f.title}</p>
+              <p className="text-xs text-ink-600">{f.formRef} · {f.when}</p>
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
+              <button onClick={() => setOpen(open === f.id ? null : f.id)}
+                className="text-xs font-semibold text-ink-600 hover:underline">
+                {open === f.id ? 'Hide steps' : 'How to fill it in'}
+              </button>
+              <a href={f.url} target="_blank" rel="noreferrer"
+                className="inline-flex items-center rounded-lg bg-shamrock-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-shamrock-700">
+                Get the form (PDF)
+              </a>
+            </div>
+          </div>
+          {open === f.id && (
+            <ol className="mt-2 grid list-decimal gap-1 pl-5">
+              {f.steps.map((step, i) => <li key={i} className="text-xs text-ink-800">{step}</li>)}
+            </ol>
+          )}
+        </li>
+      ))}
+    </ul>
   )
 }
 
@@ -353,6 +416,18 @@ function Uploader({ section, types, profile, onUpsert }: {
             ))}
           </ul>
           <p className="mt-2 text-xs text-ink-400">{selectedType.originalOrCopy}</p>
+          {formForDocType(selectedType.docId) && (
+            <p className="mt-2 text-xs">
+              <a href={formForDocType(selectedType.docId)!.url} target="_blank" rel="noreferrer"
+                className="font-semibold text-shamrock-700 underline">
+                Get the blank {formForDocType(selectedType.docId)!.title} form ({formForDocType(selectedType.docId)!.formRef})
+              </a>
+              <span className="text-ink-400"> · opens the Department&apos;s PDF</span>
+            </p>
+          )}
+          {NO_PUBLISHED_FORM[selectedType.docId] && (
+            <p className="mt-2 rounded-lg bg-ink-100 px-3 py-2 text-xs text-ink-800">{NO_PUBLISHED_FORM[selectedType.docId]}</p>
+          )}
           {selectedType.needsCertification && (
             <p className="mt-2 rounded-lg bg-yellow-50 px-3 py-2 text-xs text-yellow-900 ring-1 ring-yellow-300">
               This needs a certified copy. You can upload it now and tick "This copy has been certified" later.
