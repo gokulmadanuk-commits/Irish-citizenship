@@ -322,15 +322,15 @@ const RAW_DOCUMENT_TYPES: RawDocumentType[] = [
 
   {
     docId: 'police-certificate',
-    name: 'Police certificate for your time in the UK',
+    name: 'ACRO police certificate (for your time in the UK)',
     category: 'good-character',
-    whyNeeded: 'Garda vetting only covers the Republic. Because you live outside the State, you must give a police report for where you live. Applicants in Northern Ireland are asked for a report from the police there.',
+    whyNeeded: 'Garda vetting only covers the Republic. The Department says people living outside the State must give a police clearance certificate from the police where they live. For Northern Ireland that means an ACRO police certificate. You apply online, not at a police station.',
     isResidenceProof: false,
-    originalOrCopy: 'The certificate as issued. Ask the Citizenship Division which one they want before you pay for it.',
-    niNote: 'There are three candidates and the Department does not name one: an ACRO police certificate, an AccessNI basic check, or a PSNI subject access reply. Ask first through the Customer Service Portal.',
+    originalOrCopy: 'The certificate as issued. Apply online at acro.police.uk. It costs 55 pounds and ACRO says it can take up to 30 working days.',
+    niNote: 'Do not send a PSNI subject access letter (the DAT1 form). Applicants report the Department took one in 2023, but in October 2025 it sent one back saying it "is not a police clearance certificate". The PSNI itself sends people to ACRO for police certificates. An AccessNI basic check only shows unspent convictions, so it is a weaker fit.',
     acceptanceCriteria: [
       NAME, HAS_DATE,
-      kw('police', 'It is from a police body', ['police', 'psni', 'acro', 'accessni', 'criminal record', 'disclosure', 'conviction'], 'Issued by ACRO, AccessNI or the PSNI.'),
+      kw('police', 'It is from a police body', ['police', 'psni', 'acro', 'accessni', 'criminal record', 'disclosure', 'conviction'], 'An ACRO police certificate.'),
     ],
   },
   {

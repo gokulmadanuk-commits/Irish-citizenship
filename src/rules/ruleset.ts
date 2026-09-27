@@ -228,8 +228,8 @@ export const RULESET: Ruleset = {
     },
     {
       id: 'std:police-report',
-      title: 'Ask which police certificate they want for Northern Ireland',
-      detail: 'Garda vetting only covers the Republic. Because you live outside the State you must give a police report as well. Three could fit: an ACRO police certificate, an AccessNI basic check, or a PSNI subject access reply. The Department does not say which, so ask through the Customer Service Portal before you pay.',
+      title: 'Apply online for an ACRO police certificate',
+      detail: 'Go to acro.police.uk and apply for a police certificate. You do not go to a police station. It costs 55 pounds and can take up to 30 working days, so start early. Do not use a PSNI subject access letter: applicants report the Department rejected one in October 2025 as "not a police clearance certificate". The Department also asks people living outside the Republic for a police report from their home country, so check whether you need one from the country you came from.',
       priority: 'important',
     },
     {
@@ -240,8 +240,8 @@ export const RULESET: Ruleset = {
     },
     {
       id: 'std:vetting',
-      title: 'Finish Garda e-vetting when they contact you',
-      detail: 'You get an invitation to the e-vetting system. Watch the email address you gave them. An unfinished vetting form holds up your whole application. Give the full six character postcode for every Northern Ireland address you lived at.',
+      title: 'If you get a Garda e-vetting invitation, deal with it',
+      detail: 'Garda e-vetting is for people who live in the Republic. Applicants in Northern Ireland who never lived in the Republic report being told it did not apply to them and the invitation was sent in error. Do not just ignore one: ask the citizenship helpdesk in writing, or complete it. If you do complete it, give the full six character postcode for every Northern Ireland address.',
       priority: 'nice-to-have',
     },
   ],
@@ -291,7 +291,8 @@ export const RULESET: Ruleset = {
     'Whether an HMRC P60 counts as a strong document for you. The Department mentions P60s, but inside a section written for citizens of the EEA, Switzerland and the UK. You are none of those.',
     'Which Northern Ireland documents count as supporting (50 point) proofs. The Department publishes no Northern Ireland list at all.',
     'Whether an HMRC self-assessment tax calculation counts as a strong (100 point) document. The list says "Employment Detail Summary (P60) or Revenue Statement", which is the Irish tax office. A self-assessment record is the same kind of thing, but the Department never names HMRC.',
-    'Which police certificate the Department accepts from a Northern Ireland resident. It asks for a police clearance certificate, and a parliamentary answer says a PSNI report, but the PSNI does not issue clearance certificates for this purpose.',
+    'Which police certificate the Department accepts from a Northern Ireland resident. Its guidance asks for a police clearance certificate and names no body. A 2021 parliamentary answer said a PSNI report. Applicants report a PSNI subject access letter being accepted in 2023 and rejected in October 2025. An ACRO police certificate is the one that plainly is a police certificate.',
+    'Whether you need a police certificate from your home country as well. A 2021 Department notice said people living outside the Republic must keep giving home country and third country police reports. The current guide does not repeat it.',
     'Whether the 70 day absence allowance applies only to the final unbroken year, or also to the earlier years. The wording of the law points to the final year only, but the old paper form asks about all five.',
     'Whether a gap between UK grants of permission, including the automatic cover while a UK application is pending, breaks your reckonable residence. The Department has published nothing on this.',
     'Whether a solicitor or commissioner for oaths qualified in Northern Ireland can certify your copies. The Department names the four roles but says nothing about where they are qualified.',
